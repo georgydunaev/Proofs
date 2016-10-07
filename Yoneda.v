@@ -29,59 +29,19 @@ Check Build_NaturalTransformation.
   intros s d m.
   refine (@path_forall _ _ _ _ _ _).
   intro x.
-  revert u.
-  Check ((F _1 (m o x o 1))%morphism = (F _1 m)%morphism o ((F _1 x)%morphism)).
-  Check @path_forall.
-  refine (@happly _ _ _ _ _).
-  simpl.
-  rewrite ((F _1 (m o x o 1))%morphism == (F _1 m)%morphism o ((F _1 x)%morphism)) .
-  
-  associativity.
-  simpl.
-  refine (@ap).
-
-  refine (@path_forall _ _ _ _ _ _).
-
-  hott_simpl.
-  
+  Check (F _1 (m o x o 1))%morphism .
+  simple refine (@happly _ _ _ _ _ _).
+  refine (F _1 (m o x o 1))%morphism.
   reflexivity.
-  simpl.
-  Check.
-  refine @funext_Op.
-  Goal 
-fun x : Core.morphism C A s => (((F _1 (m o x o 1))%morphism u) =
- (F _1 m)%morphism ((F _1 x)%morphism u))
-  simpl.
-  Check ((F _1 (m o x o 1))%morphism u) = ((F _1 m)%morphism ((F _1 x)%morphism u)).
-  Check ap.
-  
-  Check .
-  reflexivity.
++ simpl.
 
-Check components_of A.
-Check Core.object_of (induced_snd (hom_functor C) A) A.
-(*Check fun (y : Core.object_of (induced_snd (hom_functor C) A) A) => u y.*)
-Check Core.object_of (induced_snd (hom_functor C) A) A.
+(*====stop here====*)
 
+(*  hott_simpl.
+  refine @funext_Op.*)
 
-Check (Unit, tt).
-construct.
-Check morphism_of.
-Check Build
-
-Check Core.morphism.
-
-Check Core.morphism.
-
-Check Core.object_of F A.
-split.
-Check Equiv.
-
-refine Build_Equiv.
 Admitted.
 End YonProo.
-
-
 
 (*Require Import Category.Core Category.Morphisms.
 Require Import HoTT.Tactics Trunc.
@@ -91,17 +51,4 @@ Require Import InitialTerminalCategory.*)
 Check Equiv Unit Unit.
 Check Isomorphic.
 Check hom_functor C.
-
 Check induced_snd (hom_functor C) A.
-
-(*
-  Definition hom_functor_A : Functor  C set_cat.
-    refine (Build_Functor (C) set_cat
-                          (fun c => obj_of c)
-                          hom_functor_morphism_of
-                          _
-                          _);
-Theorem q : Core.Functor (C^op * C) Core.set_cat.
-intro q;*)
-
-Check (NaturalTransformation (induced_snd (hom_functor C) A) F).
