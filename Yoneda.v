@@ -7,7 +7,7 @@ Require Import HoTT.Categories.NaturalTransformation.Paths.
 Open Scope morphism.
 
 Theorem qwe
-(H : Funext)
+`{Funext}
 (C : Category)
 (F : Functor C set_cat)
 (A : C)
@@ -105,31 +105,11 @@ Proof.
     + simpl.
       intro T.
       unfold qwe.
-      Check ap10 (identity_of F A) (T_to_u T).
-      simpl.
-(*====stop here====*)
-      admit.
-Admitted.
+      refine (@path_contr _ _ _ _).
+      simple refine (@BuildContr _ _ _ ).
+      - simple refine (@qwe _ _ _ _ _).
+      - intro y.
+        refine (@path_ishprop _ _ _ _).
+Defined.
 End YonProo.
-
-
 End eqpro.
-
-(*
- Check (@right_identity C A X f)^.
- set (hA := induced_snd (hom_functor C) A).
- set (hAf := @morphism_of _ _ hA _ _ f).
-
-  reflexivity.
-  destruct F.
-  hott_simpl.
-  refine @funext_Op.*)
-
-(*Require Import Category.Core Category.Morphisms.
-Require Import HoTT.Tactics Trunc.
-Require Import HoTT.Categories.Category.Univalent.
-Require Import InitialTerminalCategory.
-Check Equiv Unit Unit.
-Check Isomorphic.
-Check hom_functor C.
-Check induced_snd (hom_functor C) A.*)
