@@ -17,50 +17,68 @@ Proof.
   exact (@identity_of C set_cat F A).
 Defined.
 
+Section eqpro.
+Context (H : Funext) (C : Category) (A : C).
+Definition hA  := induced_snd (hom_functor C) A.
+
+Section calc.
+Context (X : C) (f: @morphism C A X).
+Definition hAf := @morphism_of _ _ hA _ _ f.
+Theorem fuho : hAf (identity A) = f.
+Proof.
+ unfold hAf.
+ simpl.
+ refine (@concat _ _ _ _ _ _ ).
+ refine (@right_identity C A X (f o 1)).
+ refine (@right_identity C A X f).
+Defined.
+End calc.
 
 Section YonProo.
-Context `{Funext} (C : Category) (F : Functor C set_cat) (A : C).
-Theorem Yoneda : Equiv (NaturalTransformation (induced_snd (hom_functor C) A) F) (F A).
+Context (F : Functor C set_cat).
+Theorem Yoneda : Equiv (NaturalTransformation hA F) (F A).
 Proof.
-simple refine (@BuildEquiv _ _ _ _).
-* intro g.
-  simple refine ((components_of g A) _).
-  simpl.
-  exact (@identity C A).
-* simpl.
-simple refine (@BuildIsEquiv _ _ _ _ _ _ _).
-intro u.
-+ simple refine (@Build_NaturalTransformation _ _ _ _ _ _ ).
-  simpl.
-  intro X.
-  intro f.
-  Check @Core.object_of .
-  exact ((@Core.morphism_of _ _ F _ _ f) u).
-  simpl.
-  intros s d m.
-
-  refine (@path_forall _ _ _ _ _ _).
-  intro j.
-  simple refine (@happly _ _ _ _ _ _).
-  refine (F _1 (m o j o 1))%morphism.
-  reflexivity.
-+ simpl.
-  intro w.
-  simpl.
-  refine (@qwe H C F A w). (*strange behaviour here*)
-+ simpl.
-  intro w.
-  simpl.
+  simple refine (@BuildEquiv _ _ _ _).
+  * intro T. (* F A <- Nat hA F *)
+    exact ((components_of T A) (@identity C A) ). 
+  * simple refine (@BuildIsEquiv _ _ _ _ _ _ _).
+    + intro u. (* F A -> Nat hA F *)
+      simple refine (@Build_NaturalTransformation _ _ _ _ _ _ ).
+      - simpl.
+        intro X.
+        intro f.
+        exact ((@Core.morphism_of _ _ F _ _ f) u).
+      - simpl.
+        intros s d m.
+        refine (@path_forall _ _ _ _ _ _).
+        intro j.
+        simple refine (@happly _ _ _ _ _ _).
+        refine (F _1 (m o j o 1))%morphism.
+        reflexivity.
+    + simpl. (* Section -> *)
+      intro u.
+      simpl.
+      refine (@qwe H C F A u). (*strange behaviour here*)
+    + simpl. (* Section <- *)
+      intro T.
+      simpl.
 (*====stop here====*)
 
+Admitted.
+End YonProo.
+
+
+End eqpro.
+
 (*
+ Check (@right_identity C A X f)^.
+ set (hA := induced_snd (hom_functor C) A).
+ set (hAf := @morphism_of _ _ hA _ _ f).
+
   reflexivity.
   destruct F.
   hott_simpl.
   refine @funext_Op.*)
-
-Admitted.
-End YonProo.
 
 (*Require Import Category.Core Category.Morphisms.
 Require Import HoTT.Tactics Trunc.
