@@ -144,6 +144,12 @@ Fixpoint mneqsm (m:nat) : code_n m m.+1 = false
    | 0 => 1
    | m0.+1 => mneqsm m0
    end.
+   
+Fixpoint mneqsm2 (m:nat) : code_n m.+1 m = false
+:=match m as n return (code_n n.+1 n = false) with
+   | 0 => 1
+   | m0.+1 => mneqsm2 m0
+   end.
 (*Proof.
 destruct m.
 reflexivity.
@@ -212,116 +218,124 @@ Check (@equiv_path_sum Unit Unit (inl tt) (inr tt)).
 
 Check  BuildEquiv.
 
-Definition b11_f : Bool -> (Unit + Unit) := (fun b => match b with false=>inl tt | true => inr tt end).
+Definition b11_f : Bool -> (Unit + Unit) :=
+ (fun b => match b with
+           | false => inl tt
+           | true  => inr tt
+           end).
 
-Definition b11_invf : (Unit + Unit) -> Bool := (fun uu => match uu with inl _=>false | inr _ => true end).
+Definition b11_invf : (Unit + Unit) -> Bool :=
+ (fun uu => match uu with
+            | inl _ => false
+            | inr _ => true
+            end).
 
-Definition b11_f_sect : Sect b11_f b11_invf := (fun x : Bool => if x as b return (b11_invf (b11_f b) = b) then idpath true else idpath false).
+Definition b11_f_sect : Sect b11_f b11_invf :=
+ (fun x : Bool => if x as b return (b11_invf (b11_f b) = b) 
+                  then idpath true 
+                  else idpath false).
 
-Definition b11_invf_sect : Sect b11_invf b11_f := 
-(fun x : Unit + Unit =>
+Definition b11_invf_sect : Sect b11_invf b11_f :=
+ (fun x : Unit + Unit =>
  match x as s return (b11_f (b11_invf s) = s) with
  | inl u =>
-     match u as u0 return (b11_f (b11_invf (inl u0)) = inl u0) with
+     match u return (b11_f (b11_invf (inl u)) = inl u) with
      | tt => idpath (inl tt)
      end
  | inr u =>
-     match u as u0 return (b11_f (b11_invf (inr u0)) = inr u0) with
+     match u return (b11_f (b11_invf (inr u)) = inr u) with
      | tt => idpath (inr tt)
      end
  end).
 
-Definition b11_adj (x : Bool) : 
-b11_invf_sect (b11_f x) = ap b11_f (b11_f_sect x) 
-:= (if x as b return (b11_invf_sect (b11_f b) = ap b11_f (b11_f_sect b))
-          then @idpath (inr tt = inr tt) (@idpath (Unit+Unit) (inr tt))
-          else @idpath (inl tt = inl tt) (@idpath (Unit+Unit) (inl tt))).
-
-(*
-Eval compute in b11_invf_sect (b11_f true).
-Eval compute in b11_f true.
-(*Type:
-b11_invf_sect (b11_f true) = ap b11_f (b11_f_sect true)
-*)
-Eval compute in ap b11_f (b11_f_sect true).
-Check b11_invf_sect (b11_f true).
-Definition b11_adj (x : Bool) : 
-b11_invf_sect (b11_f x) = ap b11_f (b11_f_sect x).
-pose (qqq:=(b11_f (b11_invf (b11_f true)) = b11_f true)).
-simpl in qqq.
-Check @idpath.
-
-simple refine (if x as b return (b11_invf_sect (b11_f b) = ap b11_f (b11_f_sect b))
-          then @idpath (b11_f (b11_invf (b11_f true)) = b11_f true) _
-          else @idpath (inl tt = inl tt) (@idpath (Unit+Unit) (inl tt))).
-          
-          (@inr  tt)
-          
-exact (if x as b return (b11_invf_sect (b11_f b) = ap b11_f (b11_f_sect b))
-          then idpath _
-          else idpath (*inl tt*) _ ).
-Print All.
-Show Proof.
-Check b11_adj.*)
-
+Definition b11_adj (x : Bool) :
+ b11_invf_sect (b11_f x) = ap b11_f (b11_f_sect x) := 
+ match x as b return (b11_invf_sect (b11_f b) = ap b11_f (b11_f_sect b)) with
+ | true  => @idpath (inr tt = inr tt) (@idpath (Unit+Unit) (inr tt))
+ | false => @idpath (inl tt = inl tt) (@idpath (Unit+Unit) (inl tt))
+ end.
+ 
 Definition b11_f_equi : IsEquiv b11_f :=
-(@BuildIsEquiv Bool (Unit+Unit) b11_f b11_invf b11_invf_sect b11_f_sect b11_adj).
+ @BuildIsEquiv Bool (Unit+Unit) b11_f b11_invf b11_invf_sect b11_f_sect b11_adj.
 
+Definition b11_iso : Equiv Bool (Unit + Unit) :=
+ @BuildEquiv Bool (Unit+Unit) b11_f b11_f_equi.
 
-Definition b11_f_equi : IsEquiv b11_f.
-simple refine (@BuildIsEquiv _ _  b11_f b11_invf b11_invf_sect b11_f_sect _).
-intro x.
-destruct x.
-reflexivity.
-reflexivity.
+Check @equiv_path_sum Unit Unit.
+Check @equiv_path_sum Unit Unit (inl tt) (inr tt).
+Check @equiv_path_sum Unit Unit (b11_f false) (b11_f true).
+
+Check @equiv_path_sum Unit Unit (inl tt) (inr tt).
+Check (@equiv_inv _ _ _ b11_f_equi).
+
+Definition smuzi : (Empty <~> (inl tt = inr tt)) :=
+ @equiv_path_sum Unit Unit (inl tt) (inr tt).
+
+Definition eqv : (false = true) -> (inl tt = inr tt) :=
+ (fun p : false = true => ap b11_f p).
+
+Definition agag : (Empty -> (inl tt = inr tt)) :=
+ @equiv_fun Empty (inl tt = inr tt) smuzi.
+ 
+Definition gaga : ((inl tt = inr tt) -> Empty) :=
+ @equiv_inv Empty (inl tt = inr tt) agag (equiv_isequiv smuzi).
+
+Definition impos : (false = true) -> Empty := 
+ (fun p:(false = true) =>  (gaga (eqv p))).
+
+Definition ururu {n}: (code_n n.+1 0 = true) -> Empty := impos.
+(*unfold code_n.
+exact impos.
 Show Proof.
+Defined.*)
 
-Check Sect.
-
-Theorem bool_iso_1plus1 : Bool <~> Unit + Unit.
+Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m).
 Proof.
-simple refine (@BuildEquiv Bool (Unit+Unit) _ _ ).
-exact bool_to_1plus1.
-(*fun b => match b with false=>inl tt | true => inr tt end.*)
-simple refine (@BuildIsEquiv _ _ _ _ _ _ _).
-exact (fun uu => match uu with inl _=>false | inr _ => true end).
-intro x.
-destruct x.
-destruct u; reflexivity.
-destruct u; reflexivity.
-intro x.
-destruct x.
-reflexivity.
-reflexivity.
-simpl.
-intro x.
-destruct x.
-reflexivity.
-reflexivity.
+destruct m.
+destruct n.
++ exact (fun _ => @idpath nat 0).
++ intros H.
+  unfold code_n in H.
+  destruct (impos H).
++ 
+intro y.
+destruct n.
+-   unfold code_n in y.
+destruct (impos y).
+- exact (ap S ( path_n n m y)).
 Show Proof.
 Defined.
 
-Print Equiv.
-Check Equiv.
+Check ap S ( path_n n m _).
+
+exact (path_n n (S m) y).
+Defined.
+Check path_n n (S m) _.
+Check ap S ( path_n n (S m) _).
+
+exact (fun H : ((code_n n (S m)) = true ) => ap S (path_n H)).
+Check ap S (path_n n m _).
+
+unfold code_n.
+  match (impos H) with 
+  end.
+
+(*
+What is analogue of "firstorder"?
+*)
+Check ((mneqsm2 n)^ @ H).
+Check mneqsm2.
 
 
-compute.
 
-pose 
+Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m) :=
+  match m as m, n as n return ((code_n n m) = true ) -> (n = m) with
+    | 0, 0 => fun _ => (@idpath nat 0)
+    | m'.+1, n'.+1 => fun H : ((code_n n' m') = true ) => ap S (path_n H)
+    | _, _ => fun H => match H with end
+  end.
 
-
-compute.
-
-reflexivity.
-
-simpl.
-
-Check  BuildIsEquiv.
-Check @equiv_inv.
-
-
-Theorem impos : (false = true) -> Empty.
-
+Check equiv_path_nat.
 
 Lemma code_n_eqk m n :
   (code_n m n) = true <-> m = n.
@@ -329,7 +343,6 @@ revert n; induction m; destruct n.
 simpl.
 try easy.
 simpl.
-
 
 contradiction.
 exfalso.
