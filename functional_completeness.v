@@ -3,7 +3,7 @@ Require Import HoTT.
 Section somelogic.
 (*Context (n:nat). Definition Var := Fin n.*)
 (*Context (n:nat). (pv:(Fin n) = Var).*)
-Definition Var := nat. (**) (*Fin n.*)
+Definition Var := nat. (*Fin n.*)
 Definition decpavar := decidable_paths_nat.
 Notation num := idmap.
 Notation mun := idmap.
@@ -28,6 +28,7 @@ Definition is_zero_eq_to (n:nat) := match n with
            | n'.+1 =>false
            end.
 
+(*
 Definition code_n := (fix code_n (m n : nat) {struct m} : Bool :=
        match m with
        | 0 => is_zero_eq_to n
@@ -37,40 +38,58 @@ Definition code_n := (fix code_n (m n : nat) {struct m} : Bool :=
            | n'.+1 => code_n m' n'
            end
        end).
+Reset code_n.*)
 
-Fixpoint code_n_eq (v : nat): (code_n v v) = true 
-:= match v as n return (code_n n n = true) with
+Definition code_n_helper
+(m' n : nat) (code_n_tail : forall (_ _ : nat), Bool)
+: Bool
+:= match n with
+   | 0     => false
+   | n'.+1 => code_n_tail m' n'
+   end.
+(*Fixpoint code_n (m :nat) {struct m} (n : nat) : Bool.*)
+
+Definition yumi (m n : nat) (arab : nat -> nat -> Bool)
+: Bool
+:= match m with
+   | 0     => is_zero_eq_to n
+   | m'.+1 => code_n_helper m' n arab
+   end.
+
+Check yumi.
+
+Definition code_n
+: nat -> nat -> Bool
+:= (fix code_n (m n : nat) {struct m} : Bool := yumi m n code_n).
+
+(*Definition code_n
+: nat -> nat -> Bool
+:= (fix code_n (m n : nat) {struct m} : Bool :=
+       match m with
+       | 0 => is_zero_eq_to n
+       | m'.+1 => code_n_helper m' n code_n
+       end).*)
+
+Check code_n.
+Fixpoint code_n_eq (v : nat): (code_n v v) = true
+:= match v with
    | 0 => 1
    | v0.+1 => code_n_eq v0
    end.
-(*.
-Proof.
-destruct v.
-reflexivity.
-exact (eqq v).
-Show Proof.
-Defined.*)
 
-Definition check_help (fm : Fm ) (m:Var) (qqq: Fm -> Var -> Bool) : Bool :=
+Definition check_help
+(fm : Fm ) (m:Var) (qqq: Fm -> Var -> Bool) 
+: Bool 
+:=
    match fm with
    | jst v => code_n m v
    | nand m1 m2 => (qqq m1 m || qqq m2 m)%Bool
    end.
 
-Fixpoint check_help_eq  (qqq: Fm -> Var -> Bool) (m:Var) :
-check_help (jst m) m qqq = true
+Definition check_help_eq
+(qqq: Fm -> Var -> Bool) (m:Var)
+:  check_help (jst m) m qqq = true
 := (code_n_eq m).
-(*Proof.
-unfold check_help.
-exact (eqq m).
-Show Proof.
-Defined.*)
-
-(*       match (decpavar v m) with
-       | inl _ => true
-       | inr _ => false
-       end*)
-
 
 (* True if threre exist a varianle 'm' in formula 'fm'*)
 Fixpoint check (fm : Fm ) (m:Var) : Bool := check_help fm m check.
@@ -99,40 +118,24 @@ Fixpoint accumulate (q:nat->nat) (m:nat) : nat :=
    end).
 Reset accumulate.
 
-Definition accumulate (q:nat->nat) : forall (m:nat), nat := 
-(fix acc (m0 : nat) {struct m0} : nat := 
- (match m0 with
-   | 0 => q 0
-   | m1.+1 => ((q (m1.+1)) + acc m1)%nat
-  end)).
-
-(*(
-fix acc (m0 : nat) {struct m0} : nat :=
- (match m with
-   | 0 => q 0
-   | m0.+1 => ((q (m0.+1)) + acc m0)%nat
-   end)) m.
-
-forall (m:nat),
-(fix accumulate (q : nat -> nat) (m0 : nat) {struct m0} : nat :=
-   match m0 with
-   | 0 => q 0
-   | m1.+1 => (q m1.+1 + accumulate q m1)%nat
-   end) (fun n : nat => if code_n n m.+1 then 1 else 0) m = 0
-*)
+Definition accumulate
+(q:nat->nat)
+: forall (m:nat), nat 
+:=(fix acc (m0 : nat) {struct m0} : nat := 
+   (match m0 with
+    | 0 => q 0
+    | m1.+1 => ((q (m1.+1)) + acc m1)%nat
+    end)).
 
 (* Number of placeholders in formula. Higher bound of amount of variables.*)
-Fixpoint Count (fm : Fm ) : nat :=
-  match fm with
+Fixpoint Count
+(fm : Fm )
+: nat
+:=match fm with
   | jst _ => 1
   | nand m1 m2 => (Count m1 + Count m2)%nat
   end.
-(*Proof.
-destruct fm as [v|m1 m2].
-exact 1.
-exact ((Count m1)+(Count m2))%nat.
-Show Proof.
-Defined.*)
+
 
 
 Section ss00.
@@ -143,23 +146,22 @@ Definition dme : nat->nat := fun n => repr (check fm (num n)).
 Definition calcFIN (m:nat) : nat := accumulate dme m.
 End ss00.
 
-Fixpoint mneqsm (m:nat) : code_n m m.+1 = false
-:=match m as n return (code_n n n.+1 = false) with
+Fixpoint mneqsm
+(m:nat)
+:  code_n m m.+1 = false
+:= match m with
    | 0 => 1
    | m0.+1 => mneqsm m0
    end.
-   
-Fixpoint mneqsm2 (m:nat) : code_n m.+1 m = false
-:=match m as n return (code_n n.+1 n = false) with
+
+Fixpoint mneqsm2
+(m:nat)
+:  code_n m.+1 m = false
+:= match m with
    | 0 => 1
    | m0.+1 => mneqsm2 m0
    end.
-(*Proof.
-destruct m.
-reflexivity.
-exact (mneqsm m).
-Show Proof.
-Defined.*)
+
 
 (* ???
 Fixpoint thmhz (m:nat) : calcFIN (jst (m.+1)) m.+1 = calcFIN (jst m) m.
@@ -185,41 +187,23 @@ Definition QQ (m:nat) := (fix acc (m0 : nat) : nat :=
 
 Eval compute in (QQ 0 1). (*1 = QQ a b iff (a<b)*)
 
-    Fixpoint code_n_eq' (v : nat): (code_n v v) = true 
-    := match v as n return (code_n n n = true) with
-       | 0 => @idpath Bool true
-       | v0.+1 => code_n_eq v0
-       end.
-
+Fixpoint code_n_eq'
+(v : nat)
+: (code_n v v) = true
+:= match v with
+   | 0     => @idpath Bool true
+   | v0.+1 => code_n_eq' v0
+   end.
 
 Definition f (m:nat) := (fix acc (m0 : nat) : nat :=
    match m0 with
    | 0 => 0
    | S m1 => ((if code_n m1 m then 1 else 0) + (acc m1))%nat
    end).
-   
-Check f.
 
 Definition dou (qf : nat -> nat -> nat) (m:nat) := qf m m.
 
 Definition impprf  (p1: forall (m:nat), 0 = dou f m) (w:nat): (0 = dou f (S w)) := (p1 (S w)).
-
-(*Definition impprf  (p1: forall (m:nat), 0 = dou f m) : forall (m:nat), (0 = dou f (S m)).
-intro w.
-exact (p1 (S w)).
-Defined.*)
-
-(*Definition hjkjk (m m0 : nat)
-:= (fix acc  : nat :=
-   match m0 with
-   | 0 => 0
-   | m1.+1 => ((if code_n m1 m then 1 else 0) + acc m1)%nat
-   end) m.*)
-   
-   
-Check @HoTT.Types.Sum.equiv_path_sum.
-Check (@equiv_path_sum Unit Unit (inl tt) (inr tt)).
-Check  BuildEquiv.
 
 Definition b11_f : Bool -> (Unit + Unit) :=
  (fun b => match b with
@@ -264,12 +248,6 @@ Definition b11_f_equi : IsEquiv b11_f :=
 Definition b11_iso : Equiv Bool (Unit + Unit) :=
  @BuildEquiv Bool (Unit+Unit) b11_f b11_f_equi.
 
-Check @equiv_path_sum Unit Unit.
-Check @equiv_path_sum Unit Unit (inl tt) (inr tt).
-Check @equiv_path_sum Unit Unit (b11_f false) (b11_f true).
-Check @equiv_path_sum Unit Unit (inl tt) (inr tt).
-Check (@equiv_inv _ _ _ b11_f_equi).
-
 Definition smuzi : (Empty <~> (inl tt = inr tt)) :=
  @equiv_path_sum Unit Unit (inl tt) (inr tt).
 
@@ -286,10 +264,6 @@ Definition impos : (false = true) -> Empty :=
  (fun p:(false = true) =>  (gaga (eqv p))).
 
 Definition ururu {n}: (code_n n.+1 0 = true) -> Empty := impos.
-(*unfold code_n.
-exact impos.
-Show Proof.
-Defined.*)
 
 Definition smth (n:nat) : (code_n n 0 = true -> n = 0) := 
  match n as n0 return (code_n n0 0 = true -> n0 = 0) with
@@ -314,128 +288,121 @@ Definition smth (n:nat) : (code_n n 0 = true -> n = 0) :=
            match (impos H) return (n0.+1 = 0) with end
        end.
 
+(*Everything may be proved 
+1)Using 'Definition'
+2)with only one 'match'
+
+Every closed term is a separate theorem.
+There exist a smallest proof of theorem.
+Every theorem must have meaningful name.
+*)
+
+Definition path_n_helper (n m0 : nat)
+(hlp : forall (n m : nat), ((code_n n m) = true ) -> (n = m) ) :=
+match n as n0 return (code_n n0 m0.+1 = true -> n0 = m0.+1) with
+       | 0 =>
+           fun y : code_n 0 m0.+1 = true =>
+           match impos y return (0 = m0.+1) with end
+       | n0.+1 => fun y : code_n n0.+1 m0.+1 = true => ap S (hlp n0 m0 y)
+       end.
 
 Definition path_n : forall (n m : nat), ((code_n n m) = true ) -> (n = m) :=
 (fix path_n (n m : nat) {struct m} :=
    match m as n0 return (code_n n n0 = true -> n = n0) with
    | 0 => smth n
-   | m0.+1 =>
-       match n as n0 return (code_n n0 m0.+1 = true -> n0 = m0.+1) with
-       | 0 =>
-           fun y : code_n 0 m0.+1 = true =>
-           match impos y return (0 = m0.+1) with end
-       | n0.+1 => fun y : code_n n0.+1 m0.+1 = true => ap S (path_n n0 m0 y)
-       end
+   | m0.+1 => path_n_helper n m0 path_n
    end).
-
- : code_n n m = true -> n = m 
-
-(*
-Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m).
-Proof.
-destruct m, n.
-+ exact (fun _ => @idpath nat 0).
-+ intros H.
-  unfold code_n in H.
-  destruct (impos H).
-+ intro y.
-  unfold code_n in y.
-  destruct (impos y).
-+ intro y.
-  exact (ap S ( path_n n m y)).
-Show Proof.
-Defined. *)
-
-(*Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m).
-Proof.
-destruct m.
-destruct n.
-+ exact (fun _ => @idpath nat 0).
-+ intros H.
-  unfold code_n in H.
-  destruct (impos H).
-+ intro y.
-  destruct n.
-  - unfold code_n in y.
-    destruct (impos y).
-  - exact (ap S ( path_n n m y)).
-Show Proof.
-Defined.*)
-
-(*Check ap S ( path_n n m _).
-exact (path_n n (S m) y).
-Defined.
-Check path_n n (S m) _.
-Check ap S ( path_n n (S m) _).
-exact (fun H : ((code_n n (S m)) = true ) => ap S (path_n H)).
-Check ap S (path_n n m _).
-unfold code_n.
-  match (impos H) with 
-  end.
-
 (*
 What is analogue of "firstorder"?
+We need an algorithm for automatic solving of first-order formulas.
 *)
-Check ((mneqsm2 n)^ @ H).
-Check mneqsm2.
-
-Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m) :=
-  match m as m, n as n return ((code_n n m) = true ) -> (n = m) with
-    | 0, 0 => fun _ => (@idpath nat 0)
-    | m'.+1, n'.+1 => fun H : ((code_n n' m') = true ) => ap S (path_n H)
-    | _, _ => fun H => match H with end
-  end.
-*)
-Check equiv_path_nat.
-
-Check  (fun _ : true = true =>  idpath 0, fun _ : 0 = 0 => idpath true).
 
 Definition testw: (true = true) <-> (0 = 0) :=
 (fun _ : true = true =>  idpath 0, fun _ : 0 = 0 => idpath true).
 
-Definition exfalso (m : nat) (natpath : m.+1 = 0) : False :=
- (transport (fun n=>match n with |0 => Unit |_=>False end) natpath^ tt).
+Definition exfalso
+(m : nat) (natpath : m.+1 = 0)
+: False
+:= (transport (fun n=>match n with |0 => Unit |_=>False end) natpath^ tt).
 
-(* Proof.
-  exact (transport (fun n=>match n with |0 => Unit |_=>False end) natpath^ tt).Defined.*)
- 
-Definition invS (n:nat) : nat := match n with 0 => 0 | S n => n end.
+Definition invS
+(n:nat)
+: nat
+:= match n with 0 => 0 | S n => n end.
 
-Definition invaps (m n:nat) (p:S m = S n) : (m = n) := (ap invS p).
+Definition invaps
+(m n:nat) (p:S m = S n)
+: (m = n)
+:= (ap invS p).
 
-Check nat_rect.
+Definition uselessthing
+(m0 : nat) (y : false = true)
+: (m0.+1 = 0)
+:= match impos y return (m0.+1 = 0) with end.
+
+Definition ut2
+(m0 : nat) (y : m0.+1 = 0)
+: false = true
+:=match exfalso m0 y return (false = true) with end.
+
+Definition niop
+(m0 : nat)
+: (false = true -> m0.+1 = 0) * (m0.+1 = 0 -> false = true)
+:= (uselessthing m0, ut2 m0).
+Check niop.
+
+(*Definition niop 
+(m0 : nat) 
+:= (fun y : false = true =>
+         match impos y return (m0.+1 = 0) with end,
+        fun y : m0.+1 = 0 =>
+        match exfalso m0 y return (false = true) with end).*)
+
+Definition muss
+(m0 n1 : nat)
+(IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
+: code_n m0 n1 = true -> m0.+1 = n1.+1
+:= fun qe : code_n m0 n1 = true => ap S (fst (IHm n1) qe).
+
+Definition muss2
+(m0 n1 : nat)
+(IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
+(qe : m0.+1 = n1.+1)
+: code_n m0 n1 = true
+:= snd (IHm n1) (invaps m0 n1 qe).
+
+Definition gonada
+(m0 n1 : nat) (IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
+: (code_n m0 n1 = true) <-> (m0.+1 = n1.+1)
+:= (muss m0 n1 IHm, muss2 m0 n1 IHm ).
+
+Definition stalin
+(m0 : nat) (IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0) (n0 : nat)
+: (code_n m0.+1 n0 = true) <-> (m0.+1 = n0)
+:=  match n0 as n1 return (code_n m0.+1 n1 = true <-> m0.+1 = n1) with
+    | 0 => niop (m0)
+    | n1.+1 => gonada m0 n1 IHm
+    end.
+
 (* What is "destruct f" when f is a function? *)
-
-Definition code_n_eqk : forall m n, (code_n m n) = true <-> m = n
-:= (fun m n : nat =>
- nat_rect (fun m0 : nat => forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
-   (fun n0 : nat =>
-    match n0 as n1 return (code_n 0 n1 = true <-> 0 = n1) with
+Definition agad
+(n : nat)
+: code_n 0 n = true <-> 0 = n
+:=  match n with
     | 0 => (fun _ : true = true => idpath, fun _ : 0 = 0 => idpath)
     | n1.+1 =>
-        (fun y : false = true =>
-         let e := impos y in match e return (0 = n1.+1) with
-                             end,
-        fun y : 0 = n1.+1 =>
-        let t := exfalso n1 y^ in match t return (false = true) with
-                                  end)
-    end)
-   (fun (m0 : nat) (IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
-      (n0 : nat) =>
-    match n0 as n1 return (code_n m0.+1 n1 = true <-> m0.+1 = n1) with
-    | 0 =>
-        (fun y : false = true =>
-         let e := impos y in match e return (m0.+1 = 0) with
-                             end,
-        fun y : m0.+1 = 0 =>
-        let t := exfalso m0 y in match t return (false = true) with
-                                 end)
-    | n1.+1 =>
-        (fun qe : code_n m0 n1 = true => ap S (fst (IHm n1) qe),
-        fun qe : m0.+1 = n1.+1 => snd (IHm n1) (invaps m0 n1 qe))
-    end) m n).
+        (fun y : false = true => match (impos y) with end,
+        fun y : 0 = n1.+1 => match (exfalso n1 y^) with end)
+    end.
 
-Lemma code_n_eqk m n :
+Check agad.
+
+Definition gulag := (fun m0 : nat => forall n0 : nat, code_n m0 n0 = true <-> m0 = n0).
+
+Definition code_n_eqk (m n : nat ) : (code_n m n) = true <-> m = n
+:= nat_rect gulag agad stalin m n.
+
+Lemma old_code_n_eqk m n :
   (code_n m n) = true <-> m = n.
 Proof.
 revert n; induction m; destruct n.
