@@ -31,27 +31,22 @@ Definition is_zero_eq_to
 
 (*push_front the b to f:nat->B*)
 Definition prepend
-(B:Type) (tailm0 : nat -> B) (b:B) (n : nat) 
+(B:Type) (tailm0 : nat -> B) (b : B) (n : nat) 
 := match n with
-   | 0 => b
+   | 0     => b
    | n0.+1 => tailm0 n0
    end.
 
+(*noname function*)
 Definition ujas (tail : nat -> nat -> Bool) (m0 : nat)
 := prepend Bool (tail m0) false.
 
-(*ok
-Definition ujas (tail : nat -> nat -> Bool) (m0 n : nat) 
-:= match n with
-   | 0 => false
-   | n0.+1 => (tail m0) n0
-   end.
-*)
-
-Definition code_n_KU (tail : nat -> nat -> Bool) (m : nat): nat -> Bool :=
- match m with
+(*"code_n_KU tail" is 2d prepend of falses to left and bottom of domain of
+[un?]curried version of tail with single "true" in the corner (0,0) *)
+Definition code_n_KU (tail : nat -> nat -> Bool) (y : nat): nat -> Bool :=
+ match y with
  | 0 => is_zero_eq_to
- | m0.+1 => ujas tail m0
+ | y0.+1 => ujas tail y0
  end.
 
 Check code_n_KU.
@@ -82,10 +77,11 @@ destruct m.
 Show Proof.
 Defined.*)
 
-
+(* code_n defines an 2d half-infinty matrix as a stable under code_n_KU
+ action. It's diagonal matrix with "true" on diagonal and "false" otherwise*)
 Definition code_n
 : nat->nat->Bool
-:=fix code_n (m:nat) {struct m} := (code_n_KU code_n m).
+:= fix code_n (m:nat) {struct m} := (code_n_KU code_n m).
 
 (*
 Definition code_nBAD
