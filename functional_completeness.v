@@ -22,13 +22,15 @@ Inductive Fm :=
 Coercion jst : Var >-> Fm.
 
 (*code_n(m,n) = (m==n)?true:false *)
+
+Definition is_zero_eq_to (n:nat) := match n with
+           | 0 => true
+           | n'.+1 =>false
+           end.
+
 Definition code_n := (fix code_n (m n : nat) {struct m} : Bool :=
        match m with
-       | 0 =>
-           match n with
-           | 0 => true
-           | n'.+1 =>false 
-           end
+       | 0 => is_zero_eq_to n
        | m'.+1 =>
            match n with
            | 0 => false
@@ -289,27 +291,44 @@ exact impos.
 Show Proof.
 Defined.*)
 
-
-Fixpoint path_n (n m : nat) : ((code_n n m) = true ) -> (n = m) :=
-(fix path_n (n m : nat) {struct m} : code_n n m = true -> n = m :=
-   match m as n0 return (code_n n n0 = true -> n = n0) with
-   | 0 =>
-       match n as n0 return (code_n n0 0 = true -> n0 = 0) with
+Definition smth (n:nat) : (code_n n 0 = true -> n = 0) := 
+ match n as n0 return (code_n n0 0 = true -> n0 = 0) with
        | 0 => fun _ : code_n 0 0 = true => idpath
        | n0.+1 =>
            fun H : code_n n0.+1 0 = true =>
-           let e := impos H in match e return (n0.+1 = 0) with
-                               end
-       end
+           match (impos H) return (n0.+1 = 0) with end
+       end.
+Reset smth.
+
+(*Definition smth (n : nat) (H : code_n n 0 = true) : (n = 0) := 
+ match n as n0 return (n0 = 0) with
+       | 0 => idpath
+       | n0.+1 => match (impos H) return (n0.+1 = 0) with end
+       end.*)
+
+Definition smth (n:nat) : (code_n n 0 = true -> n = 0) := 
+ match n as n0 return (code_n n0 0 = true -> n0 = 0) with
+       | 0 => fun _ : code_n 0 0 = true => idpath
+       | n0.+1 =>
+           fun H : code_n n0.+1 0 = true =>
+           match (impos H) return (n0.+1 = 0) with end
+       end.
+
+
+Definition path_n : forall (n m : nat), ((code_n n m) = true ) -> (n = m) :=
+(fix path_n (n m : nat) {struct m} :=
+   match m as n0 return (code_n n n0 = true -> n = n0) with
+   | 0 => smth n
    | m0.+1 =>
        match n as n0 return (code_n n0 m0.+1 = true -> n0 = m0.+1) with
        | 0 =>
            fun y : code_n 0 m0.+1 = true =>
-           let e := impos y in match e return (0 = m0.+1) with
-                               end
+           match impos y return (0 = m0.+1) with end
        | n0.+1 => fun y : code_n n0.+1 m0.+1 = true => ap S (path_n n0 m0 y)
        end
-   end) n m.
+   end).
+
+ : code_n n m = true -> n = m 
 
 (*
 Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m).
