@@ -21,46 +21,100 @@ Inductive Fm :=
 
 Coercion jst : Var >-> Fm.
 
-(*code_n(m,n) = (m==n)?true:false *)
-
-Definition is_zero_eq_to (n:nat) := match n with
-           | 0 => true
-           | n'.+1 =>false
-           end.
-
-(*
-Definition code_n := (fix code_n (m n : nat) {struct m} : Bool :=
-       match m with
-       | 0 => is_zero_eq_to n
-       | m'.+1 =>
-           match n with
-           | 0 => false
-           | n'.+1 => code_n m' n'
-           end
-       end).
-Reset code_n.*)
-
-Definition code_n_helper
-(m' n : nat) (code_n_tail : forall (_ _ : nat), Bool)
+Definition is_zero_eq_to
+(n:nat)
 : Bool
 := match n with
-   | 0     => false
-   | n'.+1 => code_n_tail m' n'
+   | 0     => true
+   | n'.+1 => false
+   end.
+
+Definition code_n_helper
+ (code_n_tail : forall (_ _ : nat), Bool) (n : nat)
+: forall (m' : nat), Bool
+:= match n with
+   | 0     => fun _:nat => false
+   | n'.+1 => code_n_tail n'
    end.
 (*Fixpoint code_n (m :nat) {struct m} (n : nat) : Bool.*)
 
-Definition yumi (m n : nat) (arab : nat -> nat -> Bool)
+(*
+Definition yumi
+(m n : nat) (arab : nat -> nat -> Bool)
 : Bool
 := match m with
    | 0     => is_zero_eq_to n
-   | m'.+1 => code_n_helper m' n arab
+   | m'.+1 => code_n_helper arab n m'
    end.
 
-Check yumi.
+Check yumi.*)
+
+Definition yumi
+(m : nat) (arab : nat -> nat -> Bool)
+: nat -> Bool
+:= match m with
+   | 0     => is_zero_eq_to
+   | m'.+1 => (code_n_helper arab) m'
+   end.
+
+(*code_n(m,n) = (m==n)?true:false *)
+(*OLD*)
+
+Fixpoint code_nat
+(m n : nat) {struct m}
+: Bool
+:=match m, n with
+  | 0, 0 => true
+  | m'.+1, n'.+1 => code_nat m' n'
+  | _, _ => false
+  end.
+Definition code_n:=code_nat.
+Reset code_n.
+
+(*!!!!!*)
+
+Definition code_n_KU (tail : nat->nat->Bool) (m n : nat) := 
+  match m, n with
+  | 0, 0 => true
+  | m'.+1, n'.+1 => tail m' n'
+  | _, _ => false
+  end.
 
 Definition code_n
+: nat->nat->Bool
+:=fix code_n (m:nat) {struct m} := (code_n_KU code_n m).
+
+(*
+Definition code_nBAD
+(g:nat) : nat->nat->Bool
+:=(fix code_n (m : nat) {struct m} := fun (z:nat) =>
+code_n_KU code_n m g).*)
+
+
+Eval compute in code_n 0 0.
+Eval compute in code_n 0 1.
+Eval compute in code_n 1 1.
+
+(*
+match m, n with
+  | 0, 0 => true
+  | m'.+1, n'.+1 => code_n m' n'
+  | _, _ => false
+  end.*)
+  
+Definition code_n'
 : nat -> nat -> Bool
-:= (fix code_n (m n : nat) {struct m} : Bool := yumi m n code_n).
+:= (fix code_n (m n : nat) {struct m} : Bool := (yumi m code_n) n).
+
+Eval compute in code_n' 1 1.
+Eval compute in code_n' 0 0.
+Eval compute in code_n' 0 1.
+
+
+(*Definition code_n
+: nat -> nat -> Bool
+:= (fix code_n (m : nat) {struct m} : nat -> Bool := yumi m code_n).
+*)
 
 (*Definition code_n
 : nat -> nat -> Bool
@@ -71,9 +125,31 @@ Definition code_n
        end).*)
 
 Check code_n.
+
+Fixpoint code_n_eq (v : nat): (code_n v v) = true.
+Proof.
+(*unfold code_n.
+unfold yumi.
+unfold is_zero_eq_to.
+unfold code_n_helper.
+simpl.*)
+destruct v.
+unfold code_n.
+unfold yumi.
+unfold is_zero_eq_to.
+reflexivity.
+simpl.
+exact (code_n_eq v).
+Defined.
+
+(*unfold code_n_helper.
+simpl.
+destruct v.
+exact (code_n_eq v).*)
+Reset code_n_eq.
 Fixpoint code_n_eq (v : nat): (code_n v v) = true
 := match v with
-   | 0 => 1
+   | 0 => idpath true
    | v0.+1 => code_n_eq v0
    end.
 
