@@ -73,13 +73,15 @@ Defined.*)
 (* True if threre exist a varianle 'm' in formula 'fm'*)
 Fixpoint check (fm : Fm ) (m:Var) : Bool := check_help fm m check.
 
-Fixpoint check_eq  (fm : Fm ) (m:Var) :
-check m m  = true.
-Proof.
+Definition check_eq  (fm : Fm ) (m:Var) :
+check m m  = true :=
+code_n_eq m.
+(*Proof.
 unfold check.
 unfold check_help.
 exact (code_n_eq m).
-Defined.
+Show Proof.
+Defined.*)
 
 Definition repr : Bool -> nat :=
   fun b:Bool => match b with
@@ -157,6 +159,7 @@ exact (mneqsm m).
 Show Proof.
 Defined.*)
 
+(* ???
 Fixpoint thmhz (m:nat) : calcFIN (jst (m.+1)) m.+1 = calcFIN (jst m) m.
 Proof.
 unfold calcFIN.
@@ -170,7 +173,7 @@ destruct m.
 reflexivity.
 simpl.
 (*exact (thmhz m).*)
-Admitted.
+Admitted.*)
 
 Definition QQ (m:nat) := (fix acc (m0 : nat) : nat :=
    match m0 with
@@ -197,10 +200,12 @@ Check f.
 
 Definition dou (qf : nat -> nat -> nat) (m:nat) := qf m m.
 
-Definition impprf  (p1: forall (m:nat), 0 = dou f m) : forall (m:nat), (0 = dou f (S m)).
+Definition impprf  (p1: forall (m:nat), 0 = dou f m) (w:nat): (0 = dou f (S w)) := (p1 (S w)).
+
+(*Definition impprf  (p1: forall (m:nat), 0 = dou f m) : forall (m:nat), (0 = dou f (S m)).
 intro w.
 exact (p1 (S w)).
-Defined.
+Defined.*)
 
 (*Definition hjkjk (m m0 : nat)
 := (fix acc  : nat :=
@@ -211,11 +216,7 @@ Defined.
    
    
 Check @HoTT.Types.Sum.equiv_path_sum.
-
-
-
 Check (@equiv_path_sum Unit Unit (inl tt) (inr tt)).
-
 Check  BuildEquiv.
 
 Definition b11_f : Bool -> (Unit + Unit) :=
@@ -264,7 +265,6 @@ Definition b11_iso : Equiv Bool (Unit + Unit) :=
 Check @equiv_path_sum Unit Unit.
 Check @equiv_path_sum Unit Unit (inl tt) (inr tt).
 Check @equiv_path_sum Unit Unit (b11_f false) (b11_f true).
-
 Check @equiv_path_sum Unit Unit (inl tt) (inr tt).
 Check (@equiv_inv _ _ _ b11_f_equi).
 
@@ -289,7 +289,45 @@ exact impos.
 Show Proof.
 Defined.*)
 
+
+Fixpoint path_n (n m : nat) : ((code_n n m) = true ) -> (n = m) :=
+(fix path_n (n m : nat) {struct m} : code_n n m = true -> n = m :=
+   match m as n0 return (code_n n n0 = true -> n = n0) with
+   | 0 =>
+       match n as n0 return (code_n n0 0 = true -> n0 = 0) with
+       | 0 => fun _ : code_n 0 0 = true => idpath
+       | n0.+1 =>
+           fun H : code_n n0.+1 0 = true =>
+           let e := impos H in match e return (n0.+1 = 0) with
+                               end
+       end
+   | m0.+1 =>
+       match n as n0 return (code_n n0 m0.+1 = true -> n0 = m0.+1) with
+       | 0 =>
+           fun y : code_n 0 m0.+1 = true =>
+           let e := impos y in match e return (0 = m0.+1) with
+                               end
+       | n0.+1 => fun y : code_n n0.+1 m0.+1 = true => ap S (path_n n0 m0 y)
+       end
+   end) n m.
+
+(*
 Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m).
+Proof.
+destruct m, n.
++ exact (fun _ => @idpath nat 0).
++ intros H.
+  unfold code_n in H.
+  destruct (impos H).
++ intro y.
+  unfold code_n in y.
+  destruct (impos y).
++ intro y.
+  exact (ap S ( path_n n m y)).
+Show Proof.
+Defined. *)
+
+(*Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m).
 Proof.
 destruct m.
 destruct n.
@@ -297,25 +335,21 @@ destruct n.
 + intros H.
   unfold code_n in H.
   destruct (impos H).
-+ 
-intro y.
-destruct n.
--   unfold code_n in y.
-destruct (impos y).
-- exact (ap S ( path_n n m y)).
++ intro y.
+  destruct n.
+  - unfold code_n in y.
+    destruct (impos y).
+  - exact (ap S ( path_n n m y)).
 Show Proof.
-Defined.
+Defined.*)
 
-Check ap S ( path_n n m _).
-
+(*Check ap S ( path_n n m _).
 exact (path_n n (S m) y).
 Defined.
 Check path_n n (S m) _.
 Check ap S ( path_n n (S m) _).
-
 exact (fun H : ((code_n n (S m)) = true ) => ap S (path_n H)).
 Check ap S (path_n n m _).
-
 unfold code_n.
   match (impos H) with 
   end.
@@ -326,37 +360,125 @@ What is analogue of "firstorder"?
 Check ((mneqsm2 n)^ @ H).
 Check mneqsm2.
 
-
-
 Fixpoint path_n {n m} : ((code_n n m) = true ) -> (n = m) :=
   match m as m, n as n return ((code_n n m) = true ) -> (n = m) with
     | 0, 0 => fun _ => (@idpath nat 0)
     | m'.+1, n'.+1 => fun H : ((code_n n' m') = true ) => ap S (path_n H)
     | _, _ => fun H => match H with end
   end.
-
+*)
 Check equiv_path_nat.
+
+Check  (fun _ : true = true =>  idpath 0, fun _ : 0 = 0 => idpath true).
+
+Definition testw: (true = true) <-> (0 = 0) :=
+(fun _ : true = true =>  idpath 0, fun _ : 0 = 0 => idpath true).
+
+Definition exfalso (m : nat) (natpath : m.+1 = 0) : False :=
+ (transport (fun n=>match n with |0 => Unit |_=>False end) natpath^ tt).
+
+(* Proof.
+  exact (transport (fun n=>match n with |0 => Unit |_=>False end) natpath^ tt).Defined.*)
+ 
+Definition invS (n:nat) : nat := match n with 0 => 0 | S n => n end.
+
+Definition invaps (m n:nat) (p:S m = S n) : (m = n) := (ap invS p).
+
+Check nat_rect.
+(* What is "destruct f" when f is a function? *)
+
+Definition code_n_eqk : forall m n, (code_n m n) = true <-> m = n
+:= (fun m n : nat =>
+ nat_rect (fun m0 : nat => forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
+   (fun n0 : nat =>
+    match n0 as n1 return (code_n 0 n1 = true <-> 0 = n1) with
+    | 0 => (fun _ : true = true => idpath, fun _ : 0 = 0 => idpath)
+    | n1.+1 =>
+        (fun y : false = true =>
+         let e := impos y in match e return (0 = n1.+1) with
+                             end,
+        fun y : 0 = n1.+1 =>
+        let t := exfalso n1 y^ in match t return (false = true) with
+                                  end)
+    end)
+   (fun (m0 : nat) (IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
+      (n0 : nat) =>
+    match n0 as n1 return (code_n m0.+1 n1 = true <-> m0.+1 = n1) with
+    | 0 =>
+        (fun y : false = true =>
+         let e := impos y in match e return (m0.+1 = 0) with
+                             end,
+        fun y : m0.+1 = 0 =>
+        let t := exfalso m0 y in match t return (false = true) with
+                                 end)
+    | n1.+1 =>
+        (fun qe : code_n m0 n1 = true => ap S (fst (IHm n1) qe),
+        fun qe : m0.+1 = n1.+1 => snd (IHm n1) (invaps m0 n1 qe))
+    end) m n).
 
 Lemma code_n_eqk m n :
   (code_n m n) = true <-> m = n.
+Proof.
 revert n; induction m; destruct n.
 simpl.
 try easy.
+unfold code_n.
+refine (_,_).
+intro y.
+destruct (impos y).
+intro y.
+destruct (exfalso n (y^)).
+unfold code_n.
+refine (_,_).
+intro y.
+destruct (impos y).
+intro y.
+destruct (exfalso m (y)).
 simpl.
+refine (_,_).
+intro qe.
+exact (ap S ((fst (IHm n)) qe)).
+simpl.
+intro qe.
+Eval compute in invaps m n qe.
+exact (snd (IHm n) (invaps m n qe)).
+Show Proof.
+Defined.
 
+(*Eval compute in ap invS qe.
+exact (ap invS ((snd (IHm n)) qe)).
+unfold code_n.
+simpl.
+Show Proof.
 contradiction.
 exfalso.
 try easy.
-
 reflexivity.
-
  try easy; firstorder.
-
-Admitted.
+Admitted.*)
 
 (* generalize what we want to prove *)
 Lemma gte m n :
   m >= n -> f m n = 0.
+  revert m; induction n; destruct m.
+  try easy.
+  intro q. 
+  reflexivity.
+  simpl.
+  intro emp.
+  destruct emp.
+  intro yu.
+  Check code_n_eq.
+  unfold f.
+  Print code_n.
+  unfold code_n.
+  
+  destruct f.
+  reflexivity.
+  simpl.
+  destruct yu.
+  destruct (code_n n (S m)).
+  try easy.
   
   revert m; induction n; destruct m; try easy; firstorder.
   simpl. destruct (code_n n (S m)) eqn:E.
