@@ -1,5 +1,14 @@
 Require Import HoTT.
 
+Section stream.
+Variable A:Type.
+CoInductive stream : Type :=
+  | cons : A -> stream -> stream.
+End stream.
+
+CoFixpoint zeroes : stream nat 
+:= cons nat 0 zeroes.
+
 Section somelogic.
 (*Context (n:nat). Definition Var := Fin n.*)
 (*Context (n:nat). (pv:(Fin n) = Var).*)
@@ -14,6 +23,14 @@ Context {decpavar:DecidablePaths Var}.
 Context {num:nat->Var}.
 Context {mun:Var->nat}.*)
 
+Inductive na :=
+| null : na
+| U : na -> na.
+
+Print na.
+Print na_ind. (* for Prop *)
+Print na_rec. (* for Set [and Prop] *)
+Print na_rect. (* for all *)
 
 Inductive Fm :=
  | jst  : Var -> Fm
@@ -49,106 +66,40 @@ Definition code_n_KU (tail : nat -> nat -> Bool) (y : nat): nat -> Bool :=
  | y0.+1 => ujas tail y0
  end.
 
-Check code_n_KU.
-
-(*OLD
-
-Definition code_n_KU (tail : nat -> nat -> Bool) (m n : nat) :=
- match m with
- | 0 => is_zero_eq_to n
- | m0.+1 => match n with
-            | 0 => false
-            | n0.+1 => tail m0 n0
-            end
- end.
-*)
-
-(*Definition code_n_KU
-(tail : nat->nat->Bool) (m n : nat)
-: Bool.
-Proof.
-destruct m.
-+ destruct n.
-  exact true.
-  exact false.
-+ destruct n.
-  exact false.
-  exact (tail m n).
-Show Proof.
-Defined.*)
-
 (* code_n defines an 2d half-infinty matrix as a stable under code_n_KU
- action. It's diagonal matrix with "true" on diagonal and "false" otherwise*)
+ action. It's diagonal matrix with "true" on diagonal and "false" otherwise.
+Value on all diagonals are the same and determined by border.*)
 Definition code_n
 : nat->nat->Bool
 := fix code_n (m:nat) {struct m} := (code_n_KU code_n m).
 
-(*
-Definition code_nBAD
-(g:nat) : nat->nat->Bool
-:=(fix code_n (m : nat) {struct m} := fun (z:nat) =>
-code_n_KU code_n m g).*)
-
-
 Eval compute in code_n 0 0.
 Eval compute in code_n 0 1.
-Eval compute in code_n 1 1.
+(*Eval compute in code_n 34759 34759. MAX *)
 
-(*
-match m, n with
-  | 0, 0 => true
-  | m'.+1, n'.+1 => code_n m' n'
-  | _, _ => false
-  end.*)
-(*
-Definition code_n'
-: nat -> nat -> Bool
-:= (fix code_n (m n : nat) {struct m} : Bool := (yumi m code_n) n).
-Eval compute in code_n' 1 1.
-Eval compute in code_n' 0 0.
-Eval compute in code_n' 0 1.
+(*It is usefull theorem, because not all terms are equally good with "fix".
+It may also be useful with S1.*)
+Definition code_n_eq_helper
+(hlp : forall (v1 : nat), code_n v1 v1 = true) (v : nat)
+: (code_n v v = true)
+:= 
+  match v as v2 return (code_n v2 v2 = true) with
+  | 0 => idpath true
+  | v0.+1 => hlp v0
+  end.
+
+(*Counterexample.
+Definition code_n_eq_helper2
+(hlp : forall (v1 : nat), code_n v1 v1 = true) (v : nat)
+: (code_n v v = true)
+:= hlp v.
 *)
-(*Definition code_n
-: nat -> nat -> Bool
-:= (fix code_n (m : nat) {struct m} : nat -> Bool := yumi m code_n).
-*)
 
-(*Definition code_n
-: nat -> nat -> Bool
-:= (fix code_n (m n : nat) {struct m} : Bool :=
-       match m with
-       | 0 => is_zero_eq_to n
-       | m'.+1 => code_n_helper m' n code_n
-       end).*)
-
-Check code_n.
-
-(*Fixpoint code_n_eq (v : nat): (code_n v v) = true.
-Proof.
-(*unfold code_n.
-unfold yumi.
-unfold is_zero_eq_to.
-unfold code_n_helper.
-simpl.*)
-destruct v.
-unfold code_n.
-unfold yumi.
-unfold is_zero_eq_to.
-reflexivity.
-simpl.
-exact (code_n_eq v).
-Defined.
-
-(*unfold code_n_helper.
-simpl.
-destruct v.
-exact (code_n_eq v).*)
-Reset code_n_eq.*)
-Fixpoint code_n_eq (v : nat): (code_n v v) = true
-:= match v with
-   | 0 => idpath true
-   | v0.+1 => code_n_eq v0
-   end.
+Definition code_n_eq
+: forall v : nat, code_n v v = true 
+:= 
+fix code_n_eq (v : nat) : code_n v v = true 
+:= code_n_eq_helper code_n_eq v.
 
 Definition check_help
 (fm : Fm ) (m:Var) (qqq: Fm -> Var -> Bool) 
@@ -164,41 +115,39 @@ Definition check_help_eq
 :  check_help (jst m) m qqq = true
 := (code_n_eq m).
 
-(* True if threre exist a varianle 'm' in formula 'fm'*)
-Fixpoint check (fm : Fm ) (m:Var) : Bool := check_help fm m check.
+(* 'true' if there exist a variable 'm' in formula 'fm'*)
+Definition check
+: forall (fm : Fm ) (m:Var), Bool
+:= fix checkfix (fm : Fm ) (m:Var) : Bool
+:= check_help fm m checkfix.
 
-Definition check_eq  (fm : Fm ) (m:Var) :
-check m m  = true :=
-code_n_eq m.
-(*Proof.
-unfold check.
-unfold check_help.
-exact (code_n_eq m).
-Show Proof.
-Defined.*)
+(*there exist variable 'h' in trivial formula 'jst h'*)
+Definition check_eq
+(fm : Fm ) (m:Var)
+: check m m  = true
+:= code_n_eq m.
 
-Definition repr : Bool -> nat :=
-  fun b:Bool => match b with
-  | true  => 1
-  | false => 0
-  end.
+Definition repr
+(b:Bool)
+: nat
+:= match b with
+   | true  => 1
+   | false => 0
+   end.
 
-(*Calculate*)
-Fixpoint accumulate (q:nat->nat) (m:nat) : nat :=
- (match m with
+(*Calculate ... *)
+Definition accumulate_helper
+(hlp: forall (q:nat->nat) (m:nat), nat) (q:nat->nat) (m:nat)
+: nat
+:= match m with
    | 0 => q 0
-   | m0.+1 => ((q (m0.+1)) + accumulate q m0)%nat
-   end).
-Reset accumulate.
+   | m0.+1 => ((q (m0.+1)) + hlp q m0)%nat
+   end.
 
 Definition accumulate
-(q:nat->nat)
-: forall (m:nat), nat 
-:=(fix acc (m0 : nat) {struct m0} : nat := 
-   (match m0 with
-    | 0 => q 0
-    | m1.+1 => ((q (m1.+1)) + acc m1)%nat
-    end)).
+: forall (q:nat->nat) (m:nat), nat
+:= (fix acc (q:nat->nat) (m:nat) : nat
+:= accumulate_helper acc q m).
 
 (* Number of placeholders in formula. Higher bound of amount of variables.*)
 Fixpoint Count
@@ -209,11 +158,9 @@ Fixpoint Count
   | nand m1 m2 => (Count m1 + Count m2)%nat
   end.
 
-
-
 Section ss00.
 Context (fm:Fm).
-(*dme(n) = 1 if there exist a variable v in formula, such that num(v) = n
+(*dme(n) = 1 if there exist a variable v in formula 'fm', such that num(v) = n
          = 0 otherwise. dme = "does [n-th variable] merely exist?" *)
 Definition dme : nat->nat := fun n => repr (check fm (num n)).
 Definition calcFIN (m:nat) : nat := accumulate dme m.
@@ -221,7 +168,7 @@ End ss00.
 
 Fixpoint mneqsm
 (m:nat)
-:  code_n m m.+1 = false
+: code_n m m.+1 = false
 := match m with
    | 0 => 1
    | m0.+1 => mneqsm m0
@@ -229,36 +176,20 @@ Fixpoint mneqsm
 
 Fixpoint mneqsm2
 (m:nat)
-:  code_n m.+1 m = false
+: code_n m.+1 m = false
 := match m with
    | 0 => 1
    | m0.+1 => mneqsm2 m0
    end.
-
-
-(* ???
-Fixpoint thmhz (m:nat) : calcFIN (jst (m.+1)) m.+1 = calcFIN (jst m) m.
-Proof.
-unfold calcFIN.
-unfold dme.
-unfold check.
-unfold check_help.
-unfold accumulate.
-unfold repr.
-
-destruct m.
-reflexivity.
-simpl.
-(*exact (thmhz m).*)
-Admitted.*)
-
+(*
+(*(1 = QQ a b) iff (a<b)*)
 Definition QQ (m:nat) := (fix acc (m0 : nat) : nat :=
    match m0 with
    | 0 => 0
    | m1.+1 => ((if code_n m1 m then 1 else 0) + acc m1)%nat
    end).
 
-Eval compute in (QQ 0 1). (*1 = QQ a b iff (a<b)*)
+Eval compute in (QQ 0 1).
 
 Fixpoint code_n_eq'
 (v : nat)
@@ -277,6 +208,7 @@ Definition f (m:nat) := (fix acc (m0 : nat) : nat :=
 Definition dou (qf : nat -> nat -> nat) (m:nat) := qf m m.
 
 Definition impprf  (p1: forall (m:nat), 0 = dou f m) (w:nat): (0 = dou f (S w)) := (p1 (S w)).
+*)
 
 Definition b11_f : Bool -> (Unit + Unit) :=
  (fun b => match b with
