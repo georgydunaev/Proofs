@@ -38,7 +38,8 @@ Definition prepend
    end.
 
 (*(2->A)->Q  <-> A->(A->Q) *)
-Definition thm (A:Type)(Q:Type):(A->(A->Q)) -> (Bool->A)->Q.
+Definition thm (A:Type)(Q:Type):(A->(A->Q)) -> ((Bool -> A) -> Q).
+Proof.
 intros f w.
 exact (f (w false) (w true) ).
 Show Proof.
@@ -48,8 +49,8 @@ Reset thm.
 Definition thm (A:Type)(Q:Type):(A->(A->Q)) -> (Bool->A)->Q
 :=(fun (f : A -> A -> Q) (w : Bool -> A) => f (w false) (w true)).
 
-
-Definition mht (A:Type)(Q:Type):((Bool->A)->Q) -> (A->(A->Q)) .
+Definition mht (A:Type)(Q:Type):((Bool->A)->Q) -> (A->(A->Q)).
+Proof.
 intros h y0 y1.
 refine (h _).
 intro b.
@@ -300,7 +301,7 @@ Fixpoint mneqsm2
    | 0 => 1
    | m0.+1 => mneqsm2 m0
    end.
-(*
+
 (*(1 = QQ a b) iff (a<b)*)
 Definition QQ (m:nat) := (fix acc (m0 : nat) : nat :=
    match m0 with
@@ -327,7 +328,6 @@ Definition f (m:nat) := (fix acc (m0 : nat) : nat :=
 Definition dou (qf : nat -> nat -> nat) (m:nat) := qf m m.
 
 Definition impprf  (p1: forall (m:nat), 0 = dou f m) (w:nat): (0 = dou f (S w)) := (p1 (S w)).
-*)
 
 Definition b11_f : Bool -> (Unit + Unit) :=
  (fun b => match b with
@@ -570,6 +570,7 @@ Admitted.*)
 (* generalize what we want to prove *)
 Lemma gte m n :
   m >= n -> f m n = 0.
+Proof.
   revert m; induction n; destruct m.
   try easy.
   intro q. 
@@ -584,7 +585,8 @@ Lemma gte m n :
   unfold code_n.
   
   destruct f.
-  reflexivity.
+Admitted.
+(*  reflexivity.
   simpl.
   destruct yu.
   destruct (code_n n (S m)).
@@ -594,33 +596,34 @@ Lemma gte m n :
   simpl. destruct (code_n n (S m)) eqn:E.
   - apply code_n_eq in E; omega.
   - assert (m >= n) by omega. rewrite IHn; auto.
-Admitted.
+Admitted.*)
 
 Lemma impprf4 (m:nat): f m m = 0.
 Proof.
 apply gte.
 auto.
 apply leq_refl.
-Defined.  
-  
-Proof.
+Defined.
+
+(*Proof.
   revert n; induction m; destruct n.
    try easy.
    firstorder.
-easy.
+easy.*)
 
 Fixpoint impprf2 (m:nat) : (0 = dou f m).
+Proof.
 unfold f.
 unfold dou.
 destruct m.
 reflexivity.
 destruct m.
 reflexivity.
+(*exact ((impprf impprf2) m).
+Defined.*)
+Admitted.
 
-exact ((impprf impprf2) m).
-Defined.
-
-Fixpoint impprf (m:nat) (p1: 0 = dou f m) :( 0 = dou f (S m)).
+(*Fixpoint impprf (m:nat) (p1: 0 = dou f m) :( 0 = dou f (S m)).
 destruct m.
 exact (impprf (0) p1). (*reflexivity.*)
 exact (impprf (S m) p1).
@@ -639,15 +642,18 @@ exact (impprf m).
 Defined.
 unfold dou.
 
+Fixpoint impprf (m:nat): f m m = f (S m) (S m).*)
 
-Fixpoint impprf (m:nat): f m m = f (S m) (S m).
-
-Fixpoint impprf (m:nat):(fix acc (m0 : nat) : nat :=
+Fixpoint impprfWUT (m:nat)
+: (fix acc (m0 : nat) : nat :=
    match m0 with
    | 0 => 0
    | m1.+1 => ((if code_n m1 m then 1 else 0) + acc m1)%nat
    end) m = 0.
-   
+Proof.
+Admitted.
+
+(*
 destruct m; reflexivity.
 
 revert m.
@@ -655,8 +661,22 @@ apply happly.
 refine 
 Check happly.
 destruct m.
-reflexivity.
+reflexivity.*)
 
+Fixpoint thmhz (m:nat) : calcFIN (jst (m.+1)) m.+1 = calcFIN (jst m) m.
+Proof.
+unfold calcFIN.
+unfold dme.
+unfold check.
+unfold check_help.
+unfold accumulate.
+unfold repr.
+
+destruct m.
+reflexivity.
+simpl.
+(*exact (thmhz m).*)
+Admitted.
 
 Fixpoint calcFIN_eq (m:nat) : calcFIN (jst m) m = 1.
 Proof.
@@ -684,21 +704,27 @@ reflexivity.
 pose ((if code_n m m then 1 else 0) = 1) as ww.
 change (if code_n m m then 1 else 0) with 1%nat.
 
-refine ((thmhz m) @ _).
+(*refine ((thmhz m) @ _).
 exact (calcFIN_eq m).
-Defined.
+Defined.*)
+Admitted.
 
 
-
-Definition maximal_help (f:Fm->nat) (fm : Fm )  : nat :=
-   match fm with
+Definition maximal_help (f:Fm->nat) (fm : Fm )
+: nat
+:= match fm with
    | jst v => mun v
    | nand m1 m2 => max (f m1) (f m2)
    end.
 
-Fixpoint maximal (fm : Fm ) : nat := maximal_help (maximal) fm.
+Fixpoint maximal (fm : Fm )
+: nat
+:= maximal_help (maximal) fm.
 
-Definition calcINF (fm : Fm) : nat := calcFIN fm (maximal fm).
+Definition calcINF (fm : Fm)
+: nat
+:= calcFIN fm (maximal fm).
+
 End somelogic.
 
 Eval compute in calcFIN (jst 1) 3.
@@ -773,7 +799,7 @@ Fixpoint cons (fm:Fm) : ((Fin (calcINF fm) -> Bool) -> Bool).
 Proof.
 destruct fm as [v|fm1 fm2].
 set (ku := (calcINF v)).
-simpl in ku. *)
+simpl in ku.
 
 
 
