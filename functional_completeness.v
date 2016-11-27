@@ -1,14 +1,5 @@
 Require Import HoTT.
 
-Section stream.
-Variable A:Type.
-CoInductive stream : Type :=
-  | cons : A -> stream -> stream.
-End stream.
-
-CoFixpoint zeroes : stream nat 
-:= cons nat 0 zeroes.
-
 Section somelogic.
 (*Context (n:nat). Definition Var := Fin n.*)
 (*Context (n:nat). (pv:(Fin n) = Var).*)
@@ -23,21 +14,13 @@ Context {decpavar:DecidablePaths Var}.
 Context {num:nat->Var}.
 Context {mun:Var->nat}.*)
 
-Inductive na :=
-| null : na
-| U : na -> na.
-
-Print na.
-Print na_ind. (* for Prop *)
-Print na_rec. (* for Set [and Prop] *)
-Print na_rect. (* for all *)
-
 Inductive Fm :=
  | jst  : Var -> Fm
- | nand : Fm -> Fm -> Fm.
+ | nand : Fm -> (Fm -> Fm).
 
 Coercion jst : Var >-> Fm.
 
+(* ====== *)
 Definition is_zero_eq_to
 (n:nat)
 : Bool
@@ -54,24 +37,160 @@ Definition prepend
    | n0.+1 => tailm0 n0
    end.
 
+(*(2->A)->Q  <-> A->(A->Q) *)
+Definition thm (A:Type)(Q:Type):(A->(A->Q)) -> (Bool->A)->Q.
+intros f w.
+exact (f (w false) (w true) ).
+Show Proof.
+Defined.
+
+Reset thm.
+Definition thm (A:Type)(Q:Type):(A->(A->Q)) -> (Bool->A)->Q
+:=(fun (f : A -> A -> Q) (w : Bool -> A) => f (w false) (w true)).
+
+
+Definition mht (A:Type)(Q:Type):((Bool->A)->Q) -> (A->(A->Q)) .
+intros h y0 y1.
+refine (h _).
+intro b.
+destruct b.
+exact y0.
+exact y1.
+Show Proof.
+Defined.
+Reset mht.
+
+Definition mht (A:Type)(Q:Type):((Bool->A)->Q) -> (A->(A->Q)) :=
+(fun (h : (Bool -> A) -> Q) (y0 y1 : A) =>
+ h (fun b : Bool => if b then y0 else y1)).
+
+Fixpoint power (X Y : Type) (n:nat): Type.
+Proof.
+destruct n.
+exact Y.
+exact (X->(power X Y n)).
+Show Proof.
+Defined.
+
+Reset power.
+
+Definition powern (X Y : Type) : nat -> Type
+:= (fix power (n : nat) {struct n} : Type :=
+   match n with
+   | 0 => Y
+   | n0.+1 => X -> power n0
+   end).
+
+
+Fixpoint thm2 (A:Type)(Q:Type)(n:nat):(powern A Q n) -> ((Fin n->A)->Q).
+Proof.
+intros f w.
+destruct n.
+unfold powern in f.
+exact f.
+unfold powern in f.
+unfold Fin in w.
+refine (thm2 A Q n (f (w (inr tt))) (fun x => w (inl x)) ).
+Show Proof.
+Defined.
+Reset thm2.
+
+Definition thm2 (A:Type)(Q:Type) : forall (n:nat), (powern A Q n) -> ((Fin n->A)->Q) :=
+(fix thm2 (n : nat) (f : powern A Q n) (w : Fin n -> A) {struct n} : Q :=
+   match n as n0 return (powern A Q n0 -> (Fin n0 -> A) -> Q) with
+   | 0 => fun (f0 : powern A Q 0) (_ : Fin 0 -> A) => f0
+   | n0.+1 =>
+       fun (f0 : powern A Q n0.+1) (w0 : Fin n0.+1 -> A) =>
+       thm2 n0 (f0 (w0 (inr tt))) (fun x : Fin n0 => w0 (inl x))
+   end f w).
+
+
+Fixpoint mht2 (A:Type)(Q:Type)(n:nat):((Fin n->A)->Q) -> (powern A Q n).
+Proof.
+intros h.
+destruct n.
+exact (h (Empty_rect (fun _ => A))).
+simpl.
+intro a.
+refine (mht2 A Q n _).
+intro g.
+refine (h _).
+intro w.
+destruct w.
+exact (g f).
+exact a.
+Show Proof.
+Defined.
+Reset mht2.
+Definition mht2 (A Q : Type) :=
+(fix mht2 (n : nat) (h : (Fin n -> A) -> Q) {struct n} : 
+ powern A Q n :=
+   match n as n0 return (((Fin n0 -> A) -> Q) -> powern A Q n0) with
+   | 0 => fun h0 : (Fin 0 -> A) -> Q => h0 (Empty_rect (fun _ : Empty => A))
+   | n0.+1 =>
+       fun (h0 : (Fin n0.+1 -> A) -> Q) (a : A) =>
+       mht2 n0
+         (fun g : Fin n0 -> A =>
+          h0 (fun w : Fin n0.+1 => match w with
+                                   | inl f => g f
+                                   | inr _ => a
+                                   end))
+   end h).
+
+(*need some examples*)
+
+(*Eval compute in thm2 n nat nat*)
+
 (*noname function*)
-Definition ujas (tail : nat -> nat -> Bool) (m0 : nat)
+(*bottom prepend of falses to 2D tabular*)
+Definition bottom_false_prep (tail : nat -> (nat -> Bool)) (m0 : nat)
 := prepend Bool (tail m0) false.
 
-(*"code_n_KU tail" is 2d prepend of falses to left and bottom of domain of
-[un?]curried version of tail with single "true" in the corner (0,0) *)
-Definition code_n_KU (tail : nat -> nat -> Bool) (y : nat): nat -> Bool :=
- match y with
+(*"addcornerbooltruefalse tail" is 2d prepend of falses to left and bottom of domain of
+[un?]curried version of tail with single "true" in the corner (0,0)
+Definition addcornerbooltruefalse (tail : nat -> (nat -> Bool)) (x : nat): nat -> Bool :=
+ match x with
  | 0 => is_zero_eq_to
- | y0.+1 => ujas tail y0
+ | x0.+1 => bottom_false_prep tail x0
+ end.
+*)
+
+Definition valatzero (B:Type) (others atzero : B)
+(n:nat)
+: B
+:= match n with
+   | 0     => atzero
+   | n'.+1 => others
+   end.
+
+Definition addcorner (B:Type) (others diags : B) (tail : nat -> (nat -> B))
+(x : nat): nat -> B :=
+ match x with
+ | 0 => valatzero B others diags
+ | x0.+1 => prepend B (tail x0) others
  end.
 
-(* code_n defines an 2d half-infinty matrix as a stable under code_n_KU
- action. It's diagonal matrix with "true" on diagonal and "false" otherwise.
-Value on all diagonals are the same and determined by border.*)
+
+(* Calculate function "code_n" that is stable under action of "addcorner":
+"code_n" defines an 2d half-infinty matrix as a stable under "addcorner"
+action. It's diagonal matrix with "true" on diagonal and "false" otherwise.
+Value on all diagonals are the same and determined by border. *)
+
+(* aim:
+Definition diagonal (A B:Type) (u d:B)
+: A -> A -> B.*)
+
+Definition diagonal (B:Type) (others diags : B)
+: nat -> (nat -> B)
+:= fix yy (m:nat) {struct m} := (addcorner B others diags yy m).
+
+Definition code_n := diagonal Bool false true .
+
+(*
 Definition code_n
-: nat->nat->Bool
-:= fix code_n (m:nat) {struct m} := (code_n_KU code_n m).
+: nat -> nat -> Bool
+:= fix code_n (m:nat) {struct m} := (addcornerbooltruefalse code_n m).
+*)
 
 Eval compute in code_n 0 0.
 Eval compute in code_n 0 1.
@@ -376,17 +495,17 @@ Definition muss2
 : code_n m0 n1 = true
 := snd (IHm n1) (invaps m0 n1 qe).
 
-Definition gonada
+Definition gnd
 (m0 n1 : nat) (IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0)
 : (code_n m0 n1 = true) <-> (m0.+1 = n1.+1)
 := (muss m0 n1 IHm, muss2 m0 n1 IHm ).
 
-Definition stalin
+Definition alin
 (m0 : nat) (IHm : forall n0 : nat, code_n m0 n0 = true <-> m0 = n0) (n0 : nat)
 : (code_n m0.+1 n0 = true) <-> (m0.+1 = n0)
 :=  match n0 as n1 return (code_n m0.+1 n1 = true <-> m0.+1 = n1) with
     | 0 => niop (m0)
-    | n1.+1 => gonada m0 n1 IHm
+    | n1.+1 => gnd m0 n1 IHm
     end.
 
 (* What is "destruct f" when f is a function? *)
@@ -402,10 +521,10 @@ Definition agad
 
 Check agad.
 
-Definition gulag := (fun m0 : nat => forall n0 : nat, code_n m0 n0 = true <-> m0 = n0).
+Definition gula := (fun m0 : nat => forall n0 : nat, code_n m0 n0 = true <-> m0 = n0).
 
 Definition code_n_eqk (m n : nat ) : (code_n m n) = true <-> m = n
-:= nat_rect gulag agad stalin m n.
+:= nat_rect gula agad alin m n.
 
 Lemma old_code_n_eqk m n :
   (code_n m n) = true <-> m = n.
