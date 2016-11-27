@@ -8,7 +8,7 @@ Open Scope morphism.
 
 Theorem qwe
 `{Funext}
-(C : Category)
+(C : PreCategory)
 (F : Functor C set_cat)
 (A : C)
 (w : F A):
