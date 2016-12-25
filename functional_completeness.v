@@ -285,8 +285,8 @@ match a with
 end.
 
 Definition check_help
-(fm : Fm ) (m:Var) (qqq: Fm -> Var -> Bool) 
-: Bool 
+(fm : Fm ) (m:Var) (qqq: Fm -> Var -> Bool)
+: Bool
 :=
    match fm with
    | jst v => code_n m v
@@ -310,12 +310,20 @@ Definition check_eq
 : check m m  = true
 := code_n_eq m.
 
-Definition repr
+Definition bool_to_nat
 (b:Bool)
 : nat
 := match b with
    | true  => 1
    | false => 0
+   end.
+
+Definition bool_to_prop
+(b:Bool)
+: Prop
+:= match b with
+   | true  => Unit
+   | false => Empty
    end.
 
 Definition composition (A B C:Type) (f:A->B) (g:B->C) (a:A) := g (f a).
@@ -364,7 +372,7 @@ Section ss00.
 Context (fm:Fm).
 (*dme(n) = 1 if there exist a variable v in formula 'fm', such that num(v) = n
          = 0 otherwise. dme = "does [n-th variable] merely exist?" *)
-Definition dme : nat->nat := fun n => repr (check fm (num n)).
+Definition dme : nat->nat := fun n => bool_to_nat (check fm (num n)).
 Definition calcFIN (m:nat) : nat := accumulate dme m.
 End ss00.
 
@@ -716,7 +724,7 @@ Definition gula := (fun m0 : nat => forall n0 : nat, code_n m0 n0 = true <-> m0 
 
 Definition code_n_eqk (m n : nat ) : (code_n m n) = true <-> m = n
 := nat_rect gula agad alin m n.
-
+(*
 Lemma old_code_n_eqk m n :
   (code_n m n) = true <-> m = n.
 Proof.
@@ -744,7 +752,7 @@ intro qe.
 Eval compute in invaps m n qe.
 exact (snd (IHm n) (invaps m n qe)).
 Show Proof.
-Defined.
+Defined.*)
 
 (*Eval compute in ap invS qe.
 exact (ap invS ((snd (IHm n)) qe)).
@@ -788,11 +796,56 @@ match a, b with
 | 0, S y => false
 end.*)
 
-(* generalize what we want to prove *)
+Print f.
+
+Definition downgre (m n : nat) (x:gre (S m) (S n)): gre m n := x.
+
+Definition bnot (b:Bool) : Bool :=
+match b with
+|true => false
+|false => true
+end.
+
+Definition pnot (A:Prop) := A->Empty.
+
+Definition notcommute (b:Bool) : (bool_to_prop (bnot b))-> (pnot (bool_to_prop b)).
+Proof.
+destruct b; simpl.
+intro q; destruct q.
+unfold pnot.
+intro t; exact idmap.
+Defined.
+
+(*Fixpoint qwerty (m n : nat) : gre m n ->  pnot (bool_to_prop (code_n n (S m))).*)
+
+Fixpoint qwerty (m n : nat) : gre m n -> bool_to_prop (bnot (code_n n (S m))).
+Proof.
+intro x.
+destruct m, n; simpl.
+exact tt.
+destruct x.
+exact tt.
+simpl.
+exact (qwerty m n x).
+Defined.
+
+(* generalize what we want to prove (x : gre (S m) (S n))*)
 Lemma gte m n :
   (gre m n) -> f m n = 0.
 Proof.
-  revert m; induction n; destruct m.
+revert m; induction n; destruct m; simpl.
+exact (fun _=> idpath).
+exact (fun _=> idpath).
+intro x.
+destruct x.
+intro x.
+pose (qwerty m n x).
+
+(*change (code_n n (S m)) with (Z.abs (' yd)).
+apply (IHn m).
+exact idpath.
+simpl in gre.
+destruct m, n; simpl.*)
 Admitted.
 (*  try easy.
   intro q. 
@@ -820,13 +873,19 @@ Admitted.*)
   - assert (m >= n) by omega. rewrite IHn; auto.
 Admitted.*)
 
-Lemma impprf4 (m:nat): f m m = 0.
+Fixpoint gre_refl (m:nat) : gre m m.
+destruct m.
+exact tt.
+simpl.
+exact (gre_refl m).
+Defined.
+
+Fixpoint impprf4 (m:nat): f m m = 0. (*Lemma*)
 Proof.
 apply gte.
-auto.
-(*apply leq_refl.
-Defined.*)
-Admitted.
+apply gre_refl.
+Defined.
+
 
 (*Proof.
   revert n; induction m; destruct n.
@@ -893,7 +952,7 @@ unfold dme.
 unfold check.
 unfold check_help.
 unfold accumulate.
-unfold repr.
+unfold bool_to_nat.
 
 destruct m.
 reflexivity.
@@ -909,7 +968,7 @@ unfold dme.
 unfold check.
 unfold check_help.
 unfold accumulate.
-unfold repr. (**)
+unfold bool_to_nat. (**)
 destruct m.
 compute.
 reflexivity.
@@ -1026,6 +1085,23 @@ identity.*)
 
 (*Let's construct the function Bool^n -> Bool*)
 
+Definition na_not (X:Fm) := nand (X) (X).
+Definition na_true (X:Var) := nand (X) (na_not X).
+Definition na_false (X:Var) := na_not (na_true X).
+
+Fixpoint decons (m:nat) :((Fin m -> Bool) -> Bool) -> Fm.
+Proof.
+intros h.
+destruct m.
+destruct (h (Empty_rec Bool)).
+
+Check h (Empty_rec Bool).
+
+Print Var.
+refine (jst (h _)).
+Print Fm.
+
+unfold Fm.
 
 
 Fixpoint cons (fm:Fm) : ((Fin (calcINF fm) -> Bool) -> Bool).
@@ -1033,8 +1109,8 @@ Proof.
 destruct fm as [v|fm1 fm2].
 set (ku := (calcINF v)).
 simpl in ku.
-
-
+compute in ku.
+Admitted.
 
 
 Check @calcINF.
