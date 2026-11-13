@@ -1,10 +1,10 @@
-Require Import HoTT.
+(* Multi-theory algebra helpers: Rings and Polynomials *)
 
 Record Monoid := {
  Monoid_set :> Set
 }.
 
-Record Ring : Type1 := {
+Record Ring : Type := {
  Ring_set :> Set;
  Ring_zero : Ring_set;
 }.
@@ -22,9 +22,3 @@ exact (nat -> (Ring_set R)).
 intro n.
 exact (Ring_zero R).
 Defined.
-
-exact (polynome (Polynomes R)).
-(*before*)
-
-Definition Polynomes (R : Ring) : Set :=
-@sig nat (fun n => R).

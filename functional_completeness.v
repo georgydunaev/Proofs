@@ -1,9 +1,10 @@
+Unset Automatic Proposition Inductives.
 (*Require Import HoTT.*)
 (* -*- mode: coq; mode: visual-line -*-  *)
 Local Set Typeclasses Strict Resolution.
 Local Unset Elimination Schemes.
 Global Set Keyed Unification.
-Global Unset Refine Instance Mode.
+(* Global Unset Refine Instance Mode. *)
 Global Unset Strict Universe Declaration.
 Global Unset Universe Minimization ToSet.
 
@@ -29,15 +30,16 @@ Inductive paths {A : Type} (a : A) : A -> Type :=
 Arguments idpath {A a} , [A] a.
 
 Scheme paths_ind := Induction for paths Sort Type.
-Arguments paths_ind [A] a P f y p.
+Arguments paths_ind [A] a P f y p : rename.
 Scheme paths_rec := Minimality for paths Sort Type.
-Arguments paths_rec [A] a P f y p.
+Arguments paths_rec [A] a P f y p : rename.
 
 (* See comment above about the tactic [induction]. *)
 Definition paths_rect := paths_ind.
 
 Notation "x = y :> A" := (@paths A x y) : type_scope.
 Notation "x = y" := (x = y :>_) : type_scope.
+Notation "A <-> B" := ((A -> B) * (B -> A))%type : type_scope.
 
 
 Section somelogic.
@@ -1016,115 +1018,290 @@ Definition calcINF (fm : Fm)
 
 End somelogic.
 
-Eval compute in calcFIN (jst 1) 3.
-
-Context (v:Var).
-Eval compute in maximal (jst v).
-
-(*
-Eval compute in decpavar 0 0.
-Eval compute in decpavar 0 1.
-Eval compute in decpavar 1 1.
-
-Eval simpl in code_nat v v.
-Eval compute in code_nat v v.
-*)
 
 
-(*Theorem q:Bool.       
-set (g := (fix code_n (m n : nat) {struct m} : Bool :=
-       match m with
-       | 0 =>
-           match n with
-           | 0 => true
-           | n'.+1 =>false 
-           end
-       | m'.+1 =>
-           match n with
-           | 0 => false
-           | n'.+1 => code_n m' n'
-           end
-       end) v v).
-cbv beta in g.
-cbv delta in g.
-cbv iota in g.
-cbv zeta in g.*)
+Section FunctionalCompleteness.
 
+Set Elimination Schemes.
 
-(*delta G.
-cbv delta g.
-Eval rewrite -> true in g.
-Print Strategies.
-(*Extraction g.*)
-Eval vm_compute in g.
-Eval compute in code_nat 1 1.
-Eval compute in dhprop_hprop (code_nat v v).
-Eval compute in (decpavar v v).
-Eval compute in check (jst v) v. (*=1*)
-Eval compute in dme (jst v) v. (*=1*)
-Eval compute in (calcFIN v 1).
-*)
+Inductive NorFm :=
+ | nor_var : Var -> NorFm
+ | nor : NorFm -> NorFm -> NorFm.
 
-Fixpoint one (v:Var) : 1 = (calcFIN v v).
-destruct v.
-reflexivity.
-Admitted.
-(*exact (one v0).
-Defined.
+Inductive BForm : Set :=
+  | BVar : Var -> BForm
+  | BConst : Bool -> BForm
+  | BNot : BForm -> BForm
+  | BAnd : BForm -> BForm -> BForm
+  | BOr : BForm -> BForm -> BForm
+  | BImp : BForm -> BForm -> BForm
+  | BIff : BForm -> BForm -> BForm.
 
-unfold calcFIN.
-unfold accumulate.
-unfold dme.
+Definition b_not (b : Bool) : Bool :=
+  match b with
+  | true => false
+  | false => true
+  end.
 
-set (ku := (calcINF v)).
-compute in ku.
-simpl in ku.
-simpl.
-reflexivity.
-identity.*)
+Definition b_and (b1 b2 : Bool) : Bool :=
+  match b1 with
+  | true => b2
+  | false => false
+  end.
 
-(*Let's construct the function Bool^n -> Bool*)
+Definition b_or (b1 b2 : Bool) : Bool :=
+  match b1 with
+  | true => true
+  | false => b2
+  end.
 
-Definition na_not (X:Fm) := nand (X) (X).
-Definition na_true (X:Var) := nand (X) (na_not X).
-Definition na_false (X:Var) := na_not (na_true X).
+Definition b_nand (b1 b2 : Bool) : Bool :=
+  b_not (b_and b1 b2).
 
-Fixpoint decons (m:nat) :((Fin m -> Bool) -> Bool) -> Fm.
+Definition b_nor (b1 b2 : Bool) : Bool :=
+  b_not (b_or b1 b2).
+
+Definition b_imp (b1 b2 : Bool) : Bool :=
+  b_or (b_not b1) b2.
+
+Definition b_iff (b1 b2 : Bool) : Bool :=
+  match b1 with
+  | true => b2
+  | false => b_not b2
+  end.
+
+Definition concat {A:Type} {x y z: A} (p: x = y) (q: y = z) : (x = z) :=
+  match q with
+  | idpath => p
+  end.
+
+Lemma b_or_false_r : forall x : Bool, b_or x false = x.
 Proof.
-intros h.
-destruct m.
-destruct (h (Empty_rec Bool)).
+  destruct x; exact idpath.
+Qed.
 
-Check h (Empty_rec Bool).
-
-Print Var.
-refine (jst (h _)).
-Print Fm.
-
-unfold Fm.
-
-
-Fixpoint cons (fm:Fm) : ((Fin (calcINF fm) -> Bool) -> Bool).
+(* Truth table identities for NAND basis *)
+Lemma nand_not_spec : forall p : Bool,
+  b_nand p p = b_not p.
 Proof.
-destruct fm as [v|fm1 fm2].
-set (ku := (calcINF v)).
-simpl in ku.
-compute in ku.
-Admitted.
+  destruct p; exact idpath.
+Qed.
 
+Lemma nand_and_spec : forall p q : Bool,
+  b_nand (b_nand p q) (b_nand p q) = b_and p q.
+Proof.
+  destruct p; destruct q; exact idpath.
+Qed.
 
-Check @calcINF.
-Eval simpl in maximal (nand (jst 1) (jst 2)).
-Eval compute in maximal (*nat idmap*) (nand (jst 3) (nand (jst 3) (jst 2))).
-Eval compute in calcFIN (jst 1) 3.
-Eval compute in calcFIN (*nat decidable_paths_nat idmap*) (nand (jst 3) (nand (jst 3) (jst 2))) 3.
-Eval compute in @calcINF (*nat decidable_paths_nat idmap idmap*) (nand (jst 3) (nand (jst 3) (jst 2))).
+Lemma nand_or_spec : forall p q : Bool,
+  b_nand (b_nand p p) (b_nand q q) = b_or p q.
+Proof.
+  destruct p; destruct q; exact idpath.
+Qed.
 
+Lemma nand_true_spec : forall p : Bool,
+  b_nand p (b_nand p p) = true.
+Proof.
+  destruct p; exact idpath.
+Qed.
 
-(*
-Definition decidable_paths_nat : DecidablePaths nat.
+Lemma nand_false_spec : forall p : Bool,
+  b_nand (b_nand p (b_nand p p)) (b_nand p (b_nand p p)) = false.
+Proof.
+  destruct p; exact idpath.
+Qed.
 
- exact (fun n m => decidable_equiv _ (@path_nat n m) _).
-Show Proof.
-*)
+Lemma nand_imp_spec : forall p q : Bool,
+  b_nand p (b_nand q q) = b_imp p q.
+Proof.
+  destruct p; destruct q; exact idpath.
+Qed.
 
+(* Truth table identities for NOR basis *)
+Lemma nor_not_spec : forall p : Bool,
+  b_nor p p = b_not p.
+Proof.
+  destruct p; exact idpath.
+Qed.
+
+Lemma nor_or_spec : forall p q : Bool,
+  b_nor (b_nor p q) (b_nor p q) = b_or p q.
+Proof.
+  destruct p; destruct q; exact idpath.
+Qed.
+
+Lemma nor_and_spec : forall p q : Bool,
+  b_nor (b_nor p p) (b_nor q q) = b_and p q.
+Proof.
+  destruct p; destruct q; exact idpath.
+Qed.
+
+Lemma nor_false_spec : forall p : Bool,
+  b_nor p (b_nor p p) = false.
+Proof.
+  destruct p; exact idpath.
+Qed.
+
+Lemma nor_true_spec : forall p : Bool,
+  b_nor (b_nor p (b_nor p p)) (b_nor p (b_nor p p)) = true.
+Proof.
+  destruct p; exact idpath.
+Qed.
+
+Fixpoint eval_bform (env : Var -> Bool) (bf : BForm) : Bool :=
+  match bf with
+  | BVar v => env v
+  | BConst b => b
+  | BNot bf1 => b_not (eval_bform env bf1)
+  | BAnd bf1 bf2 => b_and (eval_bform env bf1) (eval_bform env bf2)
+  | BOr bf1 bf2 => b_or (eval_bform env bf1) (eval_bform env bf2)
+  | BImp bf1 bf2 => b_imp (eval_bform env bf1) (eval_bform env bf2)
+  | BIff bf1 bf2 => b_iff (eval_bform env bf1) (eval_bform env bf2)
+  end.
+
+Fixpoint eval_nand (env : Var -> Bool) (nfm : Fm) : Bool :=
+  match nfm with
+  | jst v => env v
+  | nand nfm1 nfm2 => b_nand (eval_nand env nfm1) (eval_nand env nfm2)
+  end.
+
+Fixpoint eval_nor (env : Var -> Bool) (orfm : NorFm) : Bool :=
+  match orfm with
+  | nor_var v => env v
+  | nor orfm1 orfm2 => b_nor (eval_nor env orfm1) (eval_nor env orfm2)
+  end.
+
+Definition nand_not_fm (nfm : Fm) : Fm := nand nfm nfm.
+Definition nand_and_fm (nfm1 nfm2 : Fm) : Fm := nand_not_fm (nand nfm1 nfm2).
+Definition nand_or_fm (nfm1 nfm2 : Fm) : Fm := nand (nand_not_fm nfm1) (nand_not_fm nfm2).
+Definition nand_true_fm : Fm := nand (jst 0) (nand_not_fm (jst 0)).
+Definition nand_false_fm : Fm := nand_not_fm nand_true_fm.
+Definition nand_imp_fm (nfm1 nfm2 : Fm) : Fm := nand nfm1 (nand_not_fm nfm2).
+Definition nand_iff_fm (nfm1 nfm2 : Fm) : Fm := nand_and_fm (nand_imp_fm nfm1 nfm2) (nand_imp_fm nfm2 nfm1).
+
+Fixpoint to_nand (bf : BForm) : Fm :=
+  match bf with
+  | BVar v => jst v
+  | BConst true => nand_true_fm
+  | BConst false => nand_false_fm
+  | BNot bf1 => nand_not_fm (to_nand bf1)
+  | BAnd bf1 bf2 => nand_and_fm (to_nand bf1) (to_nand bf2)
+  | BOr bf1 bf2 => nand_or_fm (to_nand bf1) (to_nand bf2)
+  | BImp bf1 bf2 => nand_imp_fm (to_nand bf1) (to_nand bf2)
+  | BIff bf1 bf2 => nand_iff_fm (to_nand bf1) (to_nand bf2)
+  end.
+
+Definition nor_not_fm (orfm : NorFm) : NorFm := nor orfm orfm.
+Definition nor_or_fm (orfm1 orfm2 : NorFm) : NorFm := nor_not_fm (nor orfm1 orfm2).
+Definition nor_and_fm (orfm1 orfm2 : NorFm) : NorFm := nor (nor_not_fm orfm1) (nor_not_fm orfm2).
+Definition nor_false_fm : NorFm := nor (nor_var 0) (nor_not_fm (nor_var 0)).
+Definition nor_true_fm : NorFm := nor_not_fm nor_false_fm.
+Definition nor_imp_fm (orfm1 orfm2 : NorFm) : NorFm := nor_or_fm (nor_not_fm orfm1) orfm2.
+Definition nor_iff_fm (orfm1 orfm2 : NorFm) : NorFm := nor_and_fm (nor_imp_fm orfm1 orfm2) (nor_imp_fm orfm2 orfm1).
+
+Fixpoint to_nor (bf : BForm) : NorFm :=
+  match bf with
+  | BVar v => nor_var v
+  | BConst true => nor_true_fm
+  | BConst false => nor_false_fm
+  | BNot bf1 => nor_not_fm (to_nor bf1)
+  | BAnd bf1 bf2 => nor_and_fm (to_nor bf1) (to_nor bf2)
+  | BOr bf1 bf2 => nor_or_fm (to_nor bf1) (to_nor bf2)
+  | BImp bf1 bf2 => nor_imp_fm (to_nor bf1) (to_nor bf2)
+  | BIff bf1 bf2 => nor_iff_fm (to_nor bf1) (to_nor bf2)
+  end.
+
+Theorem nand_functional_completeness :
+  forall (bf : BForm) (env : Var -> Bool),
+    eval_nand env (to_nand bf) = eval_bform env bf.
+Proof.
+  induction bf; intros env; simpl.
+  - exact idpath.
+  - destruct b; [apply nand_true_spec | apply nand_false_spec].
+  - unfold nand_not_fm; simpl.
+    generalize (IHbf env); intro H; destruct H.
+    destruct (eval_nand env (to_nand bf)); exact idpath.
+  - unfold nand_and_fm, nand_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nand env (to_nand bf1)); destruct (eval_nand env (to_nand bf2)); exact idpath.
+  - unfold nand_or_fm, nand_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nand env (to_nand bf1)); destruct (eval_nand env (to_nand bf2)); exact idpath.
+  - unfold nand_imp_fm, nand_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nand env (to_nand bf1)); destruct (eval_nand env (to_nand bf2)); exact idpath.
+  - unfold nand_iff_fm, nand_and_fm, nand_imp_fm, nand_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nand env (to_nand bf1)); destruct (eval_nand env (to_nand bf2)); exact idpath.
+Qed.
+
+Theorem nor_functional_completeness :
+  forall (bf : BForm) (env : Var -> Bool),
+    eval_nor env (to_nor bf) = eval_bform env bf.
+Proof.
+  induction bf; intros env; simpl.
+  - exact idpath.
+  - destruct b; [apply nor_true_spec | apply nor_false_spec].
+  - unfold nor_not_fm; simpl.
+    generalize (IHbf env); intro H; destruct H.
+    destruct (eval_nor env (to_nor bf)); exact idpath.
+  - unfold nor_and_fm, nor_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nor env (to_nor bf1)); destruct (eval_nor env (to_nor bf2)); exact idpath.
+  - unfold nor_or_fm, nor_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nor env (to_nor bf1)); destruct (eval_nor env (to_nor bf2)); exact idpath.
+  - unfold nor_imp_fm, nor_or_fm, nor_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nor env (to_nor bf1)); destruct (eval_nor env (to_nor bf2)); exact idpath.
+  - unfold nor_iff_fm, nor_and_fm, nor_imp_fm, nor_or_fm, nor_not_fm; simpl.
+    generalize (IHbf1 env) (IHbf2 env); intros H1 H2; destruct H1; destruct H2.
+    destruct (eval_nor env (to_nor bf1)); destruct (eval_nor env (to_nor bf2)); exact idpath.
+Qed.
+
+Fixpoint shannon_bform (offset : nat) (n : nat) : powern Bool Bool n -> BForm :=
+  match n as n0 return (powern Bool Bool n0 -> BForm) with
+  | 0 => fun b => BConst b
+  | S k => fun fn =>
+      BOr (BAnd (BVar offset) (shannon_bform (S offset) k (fn true)))
+          (BAnd (BNot (BVar offset)) (shannon_bform (S offset) k (fn false)))
+  end.
+
+Fixpoint apply_powern (offset : nat) (n : nat) : powern Bool Bool n -> (Var -> Bool) -> Bool :=
+  match n as n0 return (powern Bool Bool n0 -> (Var -> Bool) -> Bool) with
+  | 0 => fun b _ => b
+  | S k => fun fn env => apply_powern (S offset) k (fn (env offset)) env
+  end.
+
+Theorem shannon_bform_correct :
+  forall (n : nat) (offset : nat) (fn : powern Bool Bool n) (env : Var -> Bool),
+    eval_bform env (shannon_bform offset n fn) = apply_powern offset n fn env.
+Proof.
+  induction n as [| k IHk]; intros offset fn env; simpl.
+  - exact idpath.
+  - set (b := env offset).
+    destruct b; simpl.
+    + refine (concat (b_or_false_r (eval_bform env (shannon_bform (S offset) k (fn true)))) _).
+      apply IHk.
+    + apply IHk.
+Qed.
+
+Theorem bool_fn_nand_completeness :
+  forall (n : nat) (fn : powern Bool Bool n) (env : Var -> Bool),
+    eval_nand env (to_nand (shannon_bform 0 n fn)) = apply_powern 0 n fn env.
+Proof.
+  intros n fn env.
+  refine (concat (nand_functional_completeness (shannon_bform 0 n fn) env) _).
+  apply shannon_bform_correct.
+Qed.
+
+Theorem bool_fn_nor_completeness :
+  forall (n : nat) (fn : powern Bool Bool n) (env : Var -> Bool),
+    eval_nor env (to_nor (shannon_bform 0 n fn)) = apply_powern 0 n fn env.
+Proof.
+  intros n fn env.
+  refine (concat (nor_functional_completeness (shannon_bform 0 n fn) env) _).
+  apply shannon_bform_correct.
+Qed.
+
+End FunctionalCompleteness.
