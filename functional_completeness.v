@@ -831,24 +831,38 @@ simpl.
 exact (qwerty m n x).
 Defined.
 
+Definition paths_concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z :=
+  match q with idpath => p end.
+
+Fixpoint gre_succ_l (m n : nat) : gre m n -> gre (S m) n :=
+  match m as m0, n as n0 return (gre m0 n0 -> gre (S m0) n0) with
+  | 0, 0 => fun _ => tt
+  | 0, S n' => fun H : Empty => match H with end
+  | S m', 0 => fun _ => tt
+  | S m', S n' => fun H => gre_succ_l m' n' H
+  end.
+
+Fixpoint code_n_false_of_gre (m n : nat) : gre m n -> code_n n (S m) = false :=
+  match m as m0, n as n0 return (gre m0 n0 -> code_n n0 (S m0) = false) with
+  | 0, 0 => fun _ => idpath false
+  | 0, S n' => fun H : Empty => match H with end
+  | S m', 0 => fun _ => idpath false
+  | S m', S n' => fun H => code_n_false_of_gre m' n' H
+  end.
+
 (* generalize what we want to prove (x : gre (S m) (S n))*)
 Lemma gte m n :
   (gre m n) -> f m n = 0.
 Proof.
-revert m; induction n; destruct m; simpl.
-exact (fun _=> idpath).
-exact (fun _=> idpath).
-intro x.
-destruct x.
-intro x.
-pose (qwerty m n x).
-
-(*change (code_n n (S m)) with (Z.abs (' yd)).
-apply (IHn m).
-exact idpath.
-simpl in gre.
-destruct m, n; simpl.*)
-Admitted.
+  revert m; induction n as [| n' IHn]; intros m H.
+  - exact idpath.
+  - destruct m as [| m'].
+    + destruct H.
+    + exact (paths_concat
+        (ap (fun b : Bool => add (if b then 1 else 0) (f (S m') n'))
+            (code_n_false_of_gre m' n' H))
+        (IHn (S m') (gre_succ_l m' n' H))).
+Qed.
 (*  try easy.
   intro q. 
   reflexivity.
@@ -895,17 +909,10 @@ Defined.
    firstorder.
 easy.*)
 
-Fixpoint impprf2 (m:nat) : (0 = dou f m).
+Lemma impprf2 (m:nat) : (0 = dou f m).
 Proof.
-unfold f.
-unfold dou.
-destruct m.
-reflexivity.
-destruct m.
-reflexivity.
-(*exact ((impprf impprf2) m).
-Defined.*)
-Admitted.
+  exact (invpath (impprf4 m)).
+Qed.
 
 (*Fixpoint impprf (m:nat) (p1: 0 = dou f m) :( 0 = dou f (S m)).
 destruct m.
@@ -928,14 +935,15 @@ unfold dou.
 
 Fixpoint impprf (m:nat): f m m = f (S m) (S m).*)
 
-Fixpoint impprfWUT (m:nat)
+Lemma impprfWUT (m:nat)
 : (fix acc (m0 : nat) : nat :=
    match m0 with
    | 0 => 0
    | S m1 => (add (if code_n m1 m then 1 else 0) (acc m1))%nat
    end) m = 0.
 Proof.
-Admitted.
+  exact (impprf4 m).
+Qed.
 
 (*
 destruct m; reflexivity.
@@ -947,51 +955,37 @@ Check happly.
 destruct m.
 reflexivity.*)
 
-Fixpoint thmhz (m:nat) : calcFIN (jst (S m)) (S m) = calcFIN (jst m) m.
+Lemma calcFIN_lt_zero (n : nat) : forall m : nat, gre m n -> calcFIN (jst (S m)) n = 0.
 Proof.
-unfold calcFIN.
-unfold dme.
-unfold check.
-unfold check_help.
-unfold accumulate.
-unfold bool_to_nat.
+  induction n as [| n' IHn]; intros m H.
+  - exact idpath.
+  - destruct m as [| m'].
+    + destruct H.
+    + exact (paths_concat
+        (ap (fun b : Bool => add (bool_to_nat b) (calcFIN (jst (S (S m'))) n'))
+            (code_n_false_of_gre m' n' H))
+        (IHn (S m') (gre_succ_l m' n' H))).
+Qed.
 
-destruct m.
-reflexivity.
-simpl.
-(*exact (thmhz m).*)
-Admitted.
-
-Fixpoint calcFIN_eq (m:nat) : calcFIN (jst m) m = 1.
+Lemma calcFIN_eq_aux (m:nat) : calcFIN (jst m) m = 1.
 Proof.
-(**)
-unfold calcFIN.
-unfold dme.
-unfold check.
-unfold check_help.
-unfold accumulate.
-unfold bool_to_nat. (**)
-destruct m.
-compute.
-reflexivity.
-simpl.
-pose (invpath (code_n_eq m)) as vv.
-destruct vv. 
-simpl.
-refine (ap S _). (*OK*)
+  destruct m as [| m'].
+  - exact idpath.
+  - exact (paths_concat
+      (ap (fun b : Bool => add (bool_to_nat b) (calcFIN (jst (S m')) m'))
+          (code_n_eq m'))
+      (ap S (calcFIN_lt_zero m' m' (gre_refl m')))).
+Qed.
 
+Lemma thmhz (m:nat) : calcFIN (jst (S m)) (S m) = calcFIN (jst m) m.
+Proof.
+  exact (paths_concat (calcFIN_eq_aux (S m)) (invpath (calcFIN_eq_aux m))).
+Qed.
 
-
-destruct m.
-reflexivity.
-
-pose ((if code_n m m then 1 else 0) = 1) as ww.
-change (if code_n m m then 1 else 0) with 1%nat.
-
-(*refine ((thmhz m) @ _).
-exact (calcFIN_eq m).
-Defined.*)
-Admitted.
+Lemma calcFIN_eq (m:nat) : calcFIN (jst m) m = 1.
+Proof.
+  exact (calcFIN_eq_aux m).
+Qed.
 
 Fixpoint max (a b: nat) : nat :=
 match a, b with
